@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    source:
+      url: jdbc:oracle:thin:@source-host:1521/SRCDB
+      username: sync_reader
+      password: ${SOURCE_DB_PASSWORD:default_pass}
+      driver-class-name: oracle.jdbc.OracleDriver
+      hikari:
+        maximum-pool-size: 5
+        connection-timeout: 30000
+    target:
+      url: jdbc:oracle:thin:@target-host:1521/TGTDB
+      username: sync_writer
+      password: ${TARGET_DB_PASSWORD:default_pass}
+      driver-class-name: oracle.jdbc.OracleDriver
+      hikari:
+        maximum-pool-size: 10
+        connection-timeout: 30000
+
+sync:
+  chunk-size-initial: 2000
+  chunk-size-min: 500
+  chunk-size-max: 10000
+  lag-alert-threshold: 100000
+  job-name: "ORDERS_SYNC"
+  fixed-delay-ms: 60000
+  
+management:
+  endpoints:
+    web:
+      exposure:
+        include: prometheus, health, info
+  metrics:
+    export:
+      prometheus:
+        enabled: true

@@ -1,0 +1,23 @@
+spring:
+  datasource:
+    source:
+      url: jdbc:h2:mem:sourcedb;MODE=Oracle;DB_CLOSE_DELAY=-1
+      username: sa
+      password: ""
+    target:
+      url: jdbc:h2:mem:targetdb;MODE=Oracle;DB_CLOSE_DELAY=-1
+      username: sa
+      password: ""
+  jpa:
+    enabled: false
+  sql:
+    init:
+      mode: never
+
+sync:
+  chunk-size-initial: 10
+  chunk-size-min: 5
+  chunk-size-max: 100
+  lag-alert-threshold: 1000
+  job-name: "ORDERS_SYNC"
+  fixed-delay-ms: 60000

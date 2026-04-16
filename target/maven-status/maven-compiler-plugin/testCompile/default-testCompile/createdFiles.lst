@@ -1,0 +1,3 @@
+com/example/sync/SyncJobExecutorTest.class
+com/example/sync/reader/SourceDataReaderTest.class
+com/example/sync/writer/TargetDataWriterTest.class
