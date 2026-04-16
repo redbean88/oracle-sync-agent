@@ -1,6 +1,5 @@
 package com.example.sync.retry;
 
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Repository;
@@ -10,11 +9,13 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Repository
-@RequiredArgsConstructor
 public class RetryQueueRepository {
 
-    @Qualifier("targetJdbcTemplate")
     private final JdbcTemplate jdbcTemplate;
+
+    public RetryQueueRepository(@Qualifier("targetJdbcTemplate") JdbcTemplate jdbcTemplate) {
+        this.jdbcTemplate = jdbcTemplate;
+    }
 
     public void save(BatchRetryQueue entry) {
         String sql = "INSERT INTO batch_retry_queue (source_ids, error_type, error_message, retry_count, max_retry, next_retry_at, status) " +

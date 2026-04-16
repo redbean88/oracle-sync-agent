@@ -2,21 +2,23 @@ package com.example.sync.monitoring;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Timer;
-import jakarta.annotation.PostConstruct;
-import lombok.RequiredArgsConstructor;
+import javax.annotation.PostConstruct;
 import org.springframework.stereotype.Component;
 
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 
 @Component
-@RequiredArgsConstructor
 public class SyncMetrics {
 
     private final MeterRegistry registry;
     private Timer readTimer;
     private Timer writeTimer;
     private AtomicLong lagGauge;
+
+    public SyncMetrics(MeterRegistry registry) {
+        this.registry = registry;
+    }
 
     @PostConstruct
     void init() {

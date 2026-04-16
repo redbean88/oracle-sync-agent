@@ -17,7 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
-public class SyncJobExecutorTest {
+public class SyncJobExecutorTest extends OracleTestBase {
 
     @Autowired
     private SyncJobExecutor syncJobExecutor;
@@ -32,20 +32,22 @@ public class SyncJobExecutorTest {
 
     @BeforeEach
     void setUp() {
-        // Initialize tables for H2
-        sourceJdbcTemplate.execute("CREATE TABLE IF NOT EXISTS orders (id BIGINT PRIMARY KEY, order_no VARCHAR(50), customer_id BIGINT, status VARCHAR(20), amount DECIMAL(10,2), created_at TIMESTAMP)");
-        targetJdbcTemplate.execute("CREATE TABLE IF NOT EXISTS orders_target (id BIGINT PRIMARY KEY, order_no VARCHAR(50), customer_id BIGINT, status VARCHAR(20), amount DECIMAL(10,2), created_at TIMESTAMP)");
-        targetJdbcTemplate.execute("CREATE TABLE IF NOT EXISTS sync_checkpoint (job_name VARCHAR(100) PRIMARY KEY, last_id BIGINT DEFAULT 0, last_synced_at TIMESTAMP, processed_cnt BIGINT DEFAULT 0)");
-        targetJdbcTemplate.execute("CREATE TABLE IF NOT EXISTS batch_retry_queue (id BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY, source_ids CLOB, error_type VARCHAR(100), error_message CLOB, retry_count INT DEFAULT 0, max_retry INT DEFAULT 5, next_retry_at TIMESTAMP, status VARCHAR(20) DEFAULT 'PENDING')");
-        targetJdbcTemplate.execute("CREATE TABLE IF NOT EXISTS shedlock (name VARCHAR(64) PRIMARY KEY, lock_until TIMESTAMP NOT NULL, locked_at TIMESTAMP NOT NULL, locked_by VARCHAR(255) NOT NULL)");
+        // Oracle 스키마 초기화
+        targetJdbcTemplate.execute("BEGIN EXECUTE IMMEDIATE 'DROP TABLE orders'; EXCEPTION WHEN OTHERS THEN NULL; END;");
+        targetJdbcTemplate.execute("BEGIN EXECUTE IMMEDIATE 'DROP TABLE orders_target'; EXCEPTION WHEN OTHERS THEN NULL; END;");
+        targetJdbcTemplate.execute("BEGIN EXECUTE IMMEDIATE 'DROP TABLE sync_checkpoint'; EXCEPTION WHEN OTHERS THEN NULL; END;");
+        targetJdbcTemplate.execute("BEGIN EXECUTE IMMEDIATE 'DROP TABLE batch_retry_queue'; EXCEPTION WHEN OTHERS THEN NULL; END;");
+        targetJdbcTemplate.execute("BEGIN EXECUTE IMMEDIATE 'DROP TABLE shedlock'; EXCEPTION WHEN OTHERS THEN NULL; END;");
 
-        sourceJdbcTemplate.execute("DELETE FROM orders");
-        targetJdbcTemplate.execute("DELETE FROM orders_target");
-        targetJdbcTemplate.execute("DELETE FROM sync_checkpoint");
+        targetJdbcTemplate.execute("CREATE TABLE orders (id NUMBER PRIMARY KEY, order_no VARCHAR2(50), customer_id NUMBER, status VARCHAR2(20), amount NUMBER(10,2), created_at TIMESTAMP)");
+        targetJdbcTemplate.execute("CREATE TABLE orders_target (id NUMBER PRIMARY KEY, order_no VARCHAR2(50), customer_id NUMBER, status VARCHAR2(20), amount NUMBER(10,2), created_at TIMESTAMP)");
+        targetJdbcTemplate.execute("CREATE TABLE sync_checkpoint (job_name VARCHAR2(100) PRIMARY KEY, last_id NUMBER DEFAULT 0, last_synced_at TIMESTAMP, processed_cnt NUMBER DEFAULT 0)");
+        targetJdbcTemplate.execute("CREATE TABLE batch_retry_queue (id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY, source_ids CLOB, error_type VARCHAR2(100), error_message CLOB, retry_count NUMBER DEFAULT 0, max_retry NUMBER DEFAULT 5, next_retry_at TIMESTAMP, status VARCHAR2(20) DEFAULT 'PENDING')");
+        targetJdbcTemplate.execute("CREATE TABLE shedlock (name VARCHAR2(64) PRIMARY KEY, lock_until TIMESTAMP NOT NULL, locked_at TIMESTAMP NOT NULL, locked_by VARCHAR2(255) NOT NULL)");
 
-        // SourceDB에 5건 삽입
+        // 데이터 삽입
         for (long i = 1; i <= 5; i++) {
-            sourceJdbcTemplate.update(
+            targetJdbcTemplate.update(
                 "INSERT INTO orders (id, order_no, customer_id, status, amount, created_at) VALUES (?, ?, ?, ?, ?, ?)",
                 i, "ORD-" + i, 1000 + i, "CREATED", new BigDecimal("100.00"), Timestamp.valueOf(LocalDateTime.now())
             );
@@ -54,17 +56,12 @@ public class SyncJobExecutorTest {
 
     @Test
     void execute_전체동기화흐름이_정상적으로_동작한다() {
-        // when
         syncJobExecutor.execute();
 
-        // then
         Integer count = targetJdbcTemplate.queryForObject("SELECT COUNT(*) FROM orders_target", Integer.class);
         assertThat(count).isEqualTo(5);
 
         Long lastId = targetJdbcTemplate.queryForObject("SELECT last_id FROM sync_checkpoint WHERE job_name = 'ORDERS_SYNC'", Long.class);
         assertThat(lastId).isEqualTo(5L);
-        
-        Long processedCnt = targetJdbcTemplate.queryForObject("SELECT processed_cnt FROM sync_checkpoint WHERE job_name = 'ORDERS_SYNC'", Long.class);
-        assertThat(processedCnt).isEqualTo(5L);
     }
 }

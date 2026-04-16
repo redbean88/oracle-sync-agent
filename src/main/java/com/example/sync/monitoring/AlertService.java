@@ -1,14 +1,15 @@
 package com.example.sync.monitoring;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 @Service
-@Slf4j
 public class AlertService {
 
+    private static final Logger log = LoggerFactory.getLogger(AlertService.class);
+
     public void sendSlack(String message) {
-        // 실제 구현(Slack API Client) 생략
         log.error("[SLACK ALERT] {}", message);
     }
 }

@@ -3,8 +3,8 @@ package com.example.sync.batch;
 import com.example.sync.reader.SourceDataReader;
 import com.example.sync.reader.dto.SourceRecordDto;
 import com.example.sync.writer.TargetDataWriter;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.util.List;
@@ -12,14 +12,18 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class BackfillJobRunner {
+
+    private static final Logger log = LoggerFactory.getLogger(BackfillJobRunner.class);
 
     private final SourceDataReader reader;
     private final TargetDataWriter writer;
 
-    // 직접 호출 또는 @Scheduled(cron = "0 0 2 * * *") 새벽 배치
+    public BackfillJobRunner(SourceDataReader reader, TargetDataWriter writer) {
+        this.reader = reader;
+        this.writer = writer;
+    }
+
     public void run(long fromId, long toId, int parallelism) {
         long rangeSize = (toId - fromId) / parallelism;
         ExecutorService pool = Executors.newFixedThreadPool(parallelism);

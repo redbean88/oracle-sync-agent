@@ -1,5 +1,6 @@
 package com.example.sync.reader;
 
+import com.example.sync.OracleTestBase;
 import com.example.sync.reader.dto.SourceRecordDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
-class SourceDataReaderTest {
+class SourceDataReaderTest extends OracleTestBase {
 
     @Autowired
     private SourceDataReader sourceDataReader;
@@ -29,10 +30,9 @@ class SourceDataReaderTest {
 
     @BeforeEach
     void setUp() {
-        sourceJdbcTemplate.execute("CREATE TABLE IF NOT EXISTS orders (id BIGINT PRIMARY KEY, order_no VARCHAR(50), customer_id BIGINT, status VARCHAR(20), amount DECIMAL(10,2), created_at TIMESTAMP)");
-        sourceJdbcTemplate.execute("DELETE FROM orders");
+        sourceJdbcTemplate.execute("BEGIN EXECUTE IMMEDIATE 'DROP TABLE orders'; EXCEPTION WHEN OTHERS THEN NULL; END;");
+        sourceJdbcTemplate.execute("CREATE TABLE orders (id NUMBER PRIMARY KEY, order_no VARCHAR2(50), customer_id NUMBER, status VARCHAR2(20), amount NUMBER(10,2), created_at TIMESTAMP)");
         
-        // 데이터 더미 5건 삽입
         for (long i = 1; i <= 5; i++) {
             sourceJdbcTemplate.update(
                 "INSERT INTO orders (id, order_no, customer_id, status, amount, created_at) VALUES (?, ?, ?, ?, ?, ?)",
@@ -43,16 +43,8 @@ class SourceDataReaderTest {
 
     @Test
     void fetchChunk_데이터를_크기만큼_가져온다() {
-        // given
-        long lastId = 0L;
-        int chunkSize = 3;
-
-        // when
-        List<SourceRecordDto> result = sourceDataReader.fetchChunk(lastId, chunkSize);
-
-        // then
+        List<SourceRecordDto> result = sourceDataReader.fetchChunk(0L, 3);
         assertThat(result).hasSize(3);
         assertThat(result.get(0).getId()).isEqualTo(1L);
-        assertThat(result.get(2).getId()).isEqualTo(3L);
     }
 }

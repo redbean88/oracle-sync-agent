@@ -2,8 +2,8 @@ package com.example.sync.retry;
 
 import com.example.sync.reader.dto.SourceRecordDto;
 import com.example.sync.writer.TargetDataWriter;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -11,13 +11,19 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class RetryQueueProcessor {
+
+    private static final Logger log = LoggerFactory.getLogger(RetryQueueProcessor.class);
 
     private final RetryQueueRepository repo;
     private final TargetDataWriter writer;
     private final DeadLetterHandler dlqHandler;
+
+    public RetryQueueProcessor(RetryQueueRepository repo, TargetDataWriter writer, DeadLetterHandler dlqHandler) {
+        this.repo = repo;
+        this.writer = writer;
+        this.dlqHandler = dlqHandler;
+    }
 
     public void enqueue(List<SourceRecordDto> records, Exception e) {
         String ids = records.stream()
@@ -46,11 +52,6 @@ public class RetryQueueProcessor {
                 continue;
             }
             try {
-                // 실 서비스에서는 sourceIds를 분할하여 SourceDB에서 재조회 후 bulkUpsert 호출
-                // 여기서는 생략된 형태만 유지
-                // List<SourceRecordDto> params = reader.fetchByIds(item.getSourceIds());
-                // writer.bulkUpsert(params);
-                
                 repo.markSuccess(item.getId());
             } catch (Exception e) {
                 repo.incrementRetry(item.getId(),
@@ -66,6 +67,6 @@ public class RetryQueueProcessor {
     }
 
     private int exponentialBackoff(int retryCount) {
-        return (int) Math.pow(2, retryCount);  // 1 / 2 / 4 / 8 / 16분
+        return (int) Math.pow(2, retryCount);
     }
 }

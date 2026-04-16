@@ -1,25 +1,30 @@
 package com.example.sync.monitoring;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class LagMonitor {
 
-    @Qualifier("sourceJdbcTemplate")
+    private static final Logger log = LoggerFactory.getLogger(LagMonitor.class);
+
     private final JdbcTemplate sourceJdbcTemplate;
-    
     private final AlertService alertService;
     private final SyncMetrics metrics;
 
     @Value("${sync.lag-alert-threshold:100000}")
     private long lagAlertThreshold;
+
+    public LagMonitor(@Qualifier("sourceJdbcTemplate") JdbcTemplate sourceJdbcTemplate, 
+                      AlertService alertService, SyncMetrics metrics) {
+        this.sourceJdbcTemplate = sourceJdbcTemplate;
+        this.alertService = alertService;
+        this.metrics = metrics;
+    }
 
     public void check(String jobName, long checkpointId) {
         Long sourceMaxId = sourceJdbcTemplate.queryForObject(

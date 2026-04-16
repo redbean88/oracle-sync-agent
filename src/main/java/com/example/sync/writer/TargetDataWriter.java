@@ -2,8 +2,8 @@ package com.example.sync.writer;
 
 import com.example.sync.exception.TransientSyncException;
 import com.example.sync.reader.dto.SourceRecordDto;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.jdbc.core.BatchPreparedStatementSetter;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -19,23 +19,26 @@ import java.sql.Timestamp;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class TargetDataWriter {
 
-    @Qualifier("targetJdbcTemplate")
+    private static final Logger log = LoggerFactory.getLogger(TargetDataWriter.class);
+
     private final JdbcTemplate targetJdbcTemplate;
 
+    public TargetDataWriter(@Qualifier("targetJdbcTemplate") JdbcTemplate targetJdbcTemplate) {
+        this.targetJdbcTemplate = targetJdbcTemplate;
+    }
+
     @Retryable(
-        retryFor  = TransientSyncException.class,
+        include = {TransientSyncException.class},
         maxAttempts = 3,
-        backoff   = @Backoff(delay = 1000, multiplier = 2)  // 1s → 2s → 4s
+        backoff = @Backoff(delay = 1000, multiplier = 2)
     )
     @Transactional(transactionManager = "targetTransactionManager")
     public void bulkUpsert(List<SourceRecordDto> records) {
         String mergeSql = "MERGE INTO orders_target t " +
-            "USING (SELECT ? AS id, ? AS order_no, ? AS customer_id, " +
-            "              ? AS status, ? AS amount, ? AS created_at " +
+            "USING (SELECT CAST(? AS NUMBER) AS id, CAST(? AS VARCHAR2(50)) AS order_no, CAST(? AS NUMBER) AS customer_id, " +
+            "              CAST(? AS VARCHAR2(20)) AS status, CAST(? AS NUMBER(10,2)) AS amount, CAST(? AS TIMESTAMP) AS created_at " +
             "       FROM dual) s " +
             "ON (t.id = s.id) " +
             "WHEN MATCHED THEN " +
@@ -66,7 +69,6 @@ public class TargetDataWriter {
 
     @Recover
     public void recover(TransientSyncException e, List<SourceRecordDto> records) {
-        // 3회 모두 실패 → 호출 측에서 retry_queue로 이동
         throw e;
     }
 }

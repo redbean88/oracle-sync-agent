@@ -1,13 +1,8 @@
-FROM maven:3.9.6-eclipse-temurin-21-alpine
+FROM maven:3.8.6-openjdk-8
 
 WORKDIR /app
-
-# Copy the pom.xml and download dependencies (layer caching)
 COPY pom.xml .
-RUN mvn dependency:go-offline -B
+RUN mvn dependency:go-offline
 
-# Copy the source code
 COPY src ./src
-
-# Run tests by default
 CMD ["mvn", "test"]
