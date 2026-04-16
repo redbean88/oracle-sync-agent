@@ -37,7 +37,7 @@ public class LagMonitor {
         log.info("[Lag] sourceMaxId={} checkpointId={} lag={}", sourceMaxId, checkpointId, lag);
 
         if (lag > lagAlertThreshold) {
-            alertService.sendSlack(
+            alertService.sendAlert(
                 String.format("⚠️ [%s] Lag 임계치 초과: %,d 건 밀림", jobName, lag));
         }
     }

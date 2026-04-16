@@ -22,6 +22,6 @@ public class DeadLetterHandler {
         repo.markDead(item.getId());
         String msg = String.format("🚨 [DeadLetter] 재시도 한도 초과: ID=%s, Error=%s", String.valueOf(item.getId()), item.getErrorType());
         log.error(msg);
-        alertService.sendSlack(msg);
+        alertService.sendAlert(msg);
     }
 }

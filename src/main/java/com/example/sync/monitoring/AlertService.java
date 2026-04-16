@@ -9,7 +9,8 @@ public class AlertService {
 
     private static final Logger log = LoggerFactory.getLogger(AlertService.class);
 
-    public void sendSlack(String message) {
-        log.error("[SLACK ALERT] {}", message);
+    public void sendAlert(String message) {
+        // 슬랙 기능 제거, 로그 출력으로 대체
+        log.error("[ALERT] {}", message);
     }
 }
