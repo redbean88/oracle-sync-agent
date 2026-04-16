@@ -9,6 +9,7 @@ import com.example.sync.reader.SourceDataReader;
 import com.example.sync.reader.dto.SourceRecordDto;
 import com.example.sync.retry.RetryQueueProcessor;
 import com.example.sync.writer.TargetDataWriter;
+import javax.annotation.PreDestroy;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -27,6 +28,7 @@ public class SyncJobExecutor {
     private final LagMonitor lagMonitor;
     private final RetryQueueProcessor retryProcessor;
     private final SyncMetrics metrics;
+    private volatile boolean shuttingDown = false;
 
     public SyncJobExecutor(CheckpointService checkpointService, SourceDataReader reader, TargetDataWriter writer, 
                            AdaptiveChunkSizer chunkSizer, LagMonitor lagMonitor, 
@@ -40,7 +42,17 @@ public class SyncJobExecutor {
         this.metrics = metrics;
     }
 
+    @PreDestroy
+    public void shutdown() {
+        log.info("[SyncJob] Shutdown 시그널 수신 - 현재 작업 완료 후 종료 예정");
+        this.shuttingDown = true;
+    }
+
     public void execute() {
+        if (shuttingDown) {
+            log.warn("[SyncJob] Shutdown 진행 중이므로 새로운 작업을 시작하지 않습니다.");
+            return;
+        }
         String jobName = "ORDERS_SYNC";
         long lastId = checkpointService.getLastId(jobName);
         int chunkSize = chunkSizer.currentSize();
