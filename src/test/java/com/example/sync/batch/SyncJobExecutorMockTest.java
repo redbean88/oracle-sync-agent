@@ -1,14 +1,14 @@
 package com.example.sync.batch;
 
 import com.example.sync.infrastructure.batch.AdaptiveChunkSizer;
-import com.example.sync.base.SyncJobExecutor;
-import com.example.sync.infrastructure.checkpoint.CheckpointService;
-import com.example.sync.infrastructure.monitoring.LagMonitor;
-import com.example.sync.infrastructure.monitoring.SyncMetrics;
-import com.example.sync.repository.reader.SourceDataReader;
-import com.example.sync.dto.SourceRecordDto;
-import com.example.sync.infrastructure.retry.RetryQueueProcessor;
-import com.example.sync.repository.writer.TargetDataWriter;
+import com.example.sync.service.SyncJobExecutor;
+import com.example.sync.service.checkpoint.CheckpointService;
+import com.example.sync.service.monitoring.LagMonitor;
+import com.example.sync.service.monitoring.SyncMetrics;
+import com.example.sync.service.reader.SourceDataReader;
+import com.example.sync.domain.source.dto.SourceRecordDto;
+import com.example.sync.service.retry.RetryQueueProcessor;
+import com.example.sync.service.writer.TargetDataWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
