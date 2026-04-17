@@ -1,7 +1,8 @@
 package com.example.sync.reader;
 
 import com.example.sync.OracleTestBase;
-import com.example.sync.reader.dto.SourceRecordDto;
+import com.example.sync.repository.reader.SourceDataReader;
+import com.example.sync.domain.dto.SourceRecordDto;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

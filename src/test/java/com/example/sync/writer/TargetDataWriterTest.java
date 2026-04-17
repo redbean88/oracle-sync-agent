@@ -1,7 +1,8 @@
 package com.example.sync.writer;
 
 import com.example.sync.OracleTestBase;
-import com.example.sync.reader.dto.SourceRecordDto;
+import com.example.sync.domain.dto.SourceRecordDto;
+import com.example.sync.repository.writer.TargetDataWriter;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,7 +14,6 @@ import org.springframework.test.context.ActiveProfiles;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Arrays;
-import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

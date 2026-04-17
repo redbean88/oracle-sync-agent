@@ -1,6 +1,6 @@
 package com.example.sync;
 
-import com.example.sync.batch.SyncJobExecutor;
+import com.example.sync.infra.batch.SyncJobExecutor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

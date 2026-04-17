@@ -1,19 +1,20 @@
 spring:
   datasource:
     source:
-      url: jdbc:h2:mem:sourcedb;MODE=Oracle;DB_CLOSE_DELAY=-1
+      jdbc-url: jdbc:h2:mem:testdb;MODE=Oracle;DB_CLOSE_DELAY=-1
       username: sa
-      password: 
+      password: ""
       driver-class-name: org.h2.Driver
     target:
-      url: jdbc:h2:mem:targetdb;MODE=Oracle;DB_CLOSE_DELAY=-1;INIT=RUNSCRIPT FROM 'classpath:sql/schema-checkpoint.sql'\;RUNSCRIPT FROM 'classpath:sql/schema-retry-queue.sql'\;RUNSCRIPT FROM 'classpath:sql/schema-shedlock.sql'
+      jdbc-url: jdbc:h2:mem:testdb;MODE=Oracle;DB_CLOSE_DELAY=-1
       username: sa
-      password: 
+      password: ""
       driver-class-name: org.h2.Driver
+  jpa:
+    enabled: false
   sql:
     init:
-      mode: always
-      schema-locations: classpath:schema.sql
+      mode: never
 
 sync:
   chunk-size-initial: 10
@@ -22,9 +23,3 @@ sync:
   lag-alert-threshold: 1000
   job-name: "ORDERS_SYNC"
   fixed-delay-ms: 60000
-
-management:
-  metrics:
-    export:
-      prometheus:
-        enabled: true

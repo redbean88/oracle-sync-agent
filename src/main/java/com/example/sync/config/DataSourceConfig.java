@@ -6,8 +6,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Primary;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.datasource.DataSourceTransactionManager;
-import org.springframework.transaction.PlatformTransactionManager;
+
 import org.springframework.beans.factory.annotation.Qualifier;
 
 import javax.sql.DataSource;
@@ -41,14 +40,4 @@ public class DataSourceConfig {
         return new JdbcTemplate(ds);
     }
 
-    @Bean
-    @Primary
-    public PlatformTransactionManager sourceTransactionManager(@Qualifier("sourceDataSource") DataSource ds) {
-        return new DataSourceTransactionManager(ds);
-    }
-
-    @Bean("targetTransactionManager")
-    public PlatformTransactionManager targetTransactionManager(@Qualifier("targetDataSource") DataSource ds) {
-        return new DataSourceTransactionManager(ds);
-    }
 }
