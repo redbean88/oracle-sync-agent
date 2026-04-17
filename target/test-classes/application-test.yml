@@ -1,0 +1,28 @@
+spring:
+  jpa:
+    database-platform: org.hibernate.dialect.Oracle12cDialect
+    hibernate:
+      ddl-auto: none
+    show-sql: true
+  datasource:
+    source:
+      jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
+      driver-class-name: oracle.jdbc.OracleDriver
+      username: source
+      password: "1234"
+    target:
+      jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
+      driver-class-name: oracle.jdbc.OracleDriver
+      username: target
+      password: "1234"
+    proxy:
+      jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
+      driver-class-name: oracle.jdbc.OracleDriver
+      username: proxy
+      password: "1234"
+  
+  main:
+    allow-bean-definition-overriding: true
+
+sync:
+  fixed-delay-ms: 1000

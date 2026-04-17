@@ -48,12 +48,12 @@ class SyncJobExecutorMockTest {
     void execute_정상_흐름_테스트() {
         // Given
         when(checkpointService.getLastId(anyString())).thenReturn(100L);
-        when(chunkSizer.currentSize()).thenReturn(500);
+        when(chunkSizer.getChunkSize()).thenReturn(500);
         
         SourceRecordDto record = new SourceRecordDto(101L, "ORD-101", 1001L, "CREATED", new BigDecimal("100.00"), LocalDateTime.now());
         List<SourceRecordDto> records = Arrays.asList(record);
         
-        when(reader.fetchChunk(eq(100L), eq(500))).thenReturn(records);
+        when(reader.readChunk(eq(100L), eq(500))).thenReturn(records);
 
         // When
         syncJobExecutor.execute();
@@ -69,8 +69,8 @@ class SyncJobExecutorMockTest {
     void execute_데이터_없을때_조기호출_종료_테스트() {
         // Given
         when(checkpointService.getLastId(anyString())).thenReturn(100L);
-        when(chunkSizer.currentSize()).thenReturn(500);
-        when(reader.fetchChunk(anyLong(), anyInt())).thenReturn(Collections.emptyList());
+        when(chunkSizer.getChunkSize()).thenReturn(500);
+        when(reader.readChunk(anyLong(), anyInt())).thenReturn(Collections.emptyList());
 
         // When
         syncJobExecutor.execute();

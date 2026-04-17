@@ -39,7 +39,7 @@ public class BackfillJobRunner {
     private void processRange(long fromId, long toId) {
         long cursor = fromId;
         while (cursor < toId) {
-            List<SourceRecordDto> chunk = reader.fetchChunk(cursor, 5000);
+            List<SourceRecordDto> chunk = reader.readChunk(cursor, 5000);
             if (chunk.isEmpty()) break;
             writer.bulkUpsert(chunk);
             cursor = chunk.get(chunk.size() - 1).getId();

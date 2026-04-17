@@ -1,20 +1,41 @@
 package com.example.sync.infrastructure.retry;
 
+import javax.persistence.*;
 import java.time.LocalDateTime;
 
+@Entity
+@Table(name = "batch_retry_queue")
 public class BatchRetryQueue {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
+
+    @Column(name = "source_ids", length = 1000)
     private String sourceIds;
+
+    @Column(name = "error_type")
     private String errorType;
+
+    @Column(name = "error_message", length = 2000)
     private String errorMessage;
-    private Integer retryCount;
-    private Integer maxRetry;
+
+    @Column(name = "retry_count")
+    private int retryCount;
+
+    @Column(name = "max_retry")
+    private int maxRetry;
+
+    @Column(name = "next_retry_at")
     private LocalDateTime nextRetryAt;
+
+    @Column(name = "status")
     private String status;
 
+    // Constructors
     public BatchRetryQueue() {}
 
-    public BatchRetryQueue(Long id, String sourceIds, String errorType, String errorMessage, Integer retryCount, Integer maxRetry, LocalDateTime nextRetryAt, String status) {
+    public BatchRetryQueue(Long id, String sourceIds, String errorType, String errorMessage, int retryCount, int maxRetry, LocalDateTime nextRetryAt, String status) {
         this.id = id;
         this.sourceIds = sourceIds;
         this.errorType = errorType;
@@ -25,15 +46,30 @@ public class BatchRetryQueue {
         this.status = status;
     }
 
-    // Getters
+    // Getters and Setters
     public Long getId() { return id; }
+    public void setId(Long id) { this.id = id; }
+
     public String getSourceIds() { return sourceIds; }
+    public void setSourceIds(String sourceIds) { this.sourceIds = sourceIds; }
+
     public String getErrorType() { return errorType; }
+    public void setErrorType(String errorType) { this.errorType = errorType; }
+
     public String getErrorMessage() { return errorMessage; }
-    public Integer getRetryCount() { return retryCount; }
-    public Integer getMaxRetry() { return maxRetry; }
+    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
+
+    public int getRetryCount() { return retryCount; }
+    public void setRetryCount(int retryCount) { this.retryCount = retryCount; }
+
+    public int getMaxRetry() { return maxRetry; }
+    public void setMaxRetry(int maxRetry) { this.maxRetry = maxRetry; }
+
     public LocalDateTime getNextRetryAt() { return nextRetryAt; }
+    public void setNextRetryAt(LocalDateTime nextRetryAt) { this.nextRetryAt = nextRetryAt; }
+
     public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
 
     // Manual Builder
     public static BatchRetryQueueBuilder builder() {
@@ -45,8 +81,8 @@ public class BatchRetryQueue {
         private String sourceIds;
         private String errorType;
         private String errorMessage;
-        private Integer retryCount;
-        private Integer maxRetry;
+        private int retryCount;
+        private int maxRetry;
         private LocalDateTime nextRetryAt;
         private String status;
 
@@ -54,13 +90,22 @@ public class BatchRetryQueue {
         public BatchRetryQueueBuilder sourceIds(String sourceIds) { this.sourceIds = sourceIds; return this; }
         public BatchRetryQueueBuilder errorType(String errorType) { this.errorType = errorType; return this; }
         public BatchRetryQueueBuilder errorMessage(String errorMessage) { this.errorMessage = errorMessage; return this; }
-        public BatchRetryQueueBuilder retryCount(Integer retryCount) { this.retryCount = retryCount; return this; }
-        public BatchRetryQueueBuilder maxRetry(Integer maxRetry) { this.maxRetry = maxRetry; return this; }
+        public BatchRetryQueueBuilder retryCount(int retryCount) { this.retryCount = retryCount; return this; }
+        public BatchRetryQueueBuilder maxRetry(int maxRetry) { this.maxRetry = maxRetry; return this; }
         public BatchRetryQueueBuilder nextRetryAt(LocalDateTime nextRetryAt) { this.nextRetryAt = nextRetryAt; return this; }
         public BatchRetryQueueBuilder status(String status) { this.status = status; return this; }
 
         public BatchRetryQueue build() {
-            return new BatchRetryQueue(id, sourceIds, errorType, errorMessage, retryCount, maxRetry, nextRetryAt, status);
+            BatchRetryQueue entity = new BatchRetryQueue();
+            entity.setId(id);
+            entity.setSourceIds(sourceIds);
+            entity.setErrorType(errorType);
+            entity.setErrorMessage(errorMessage);
+            entity.setRetryCount(retryCount);
+            entity.setMaxRetry(maxRetry);
+            entity.setNextRetryAt(nextRetryAt);
+            entity.setStatus(status);
+            return entity;
         }
     }
 }

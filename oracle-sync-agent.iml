@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<module version="4">
+  <component name="FacetManager">
+    <facet type="jpa" name="JPA">
+      <configuration>
+        <setting name="validation-enabled" value="true" />
+        <setting name="provider-name" value="Hibernate" />
+        <datasource-mapping>
+          <factory-entry name="entityManagerFactory" />
+          <factory-entry name="proxyEntityManager" value="5e4de2e7-7df9-4053-900d-4aadab7c42a6" />
+          <factory-entry name="sourceEntityManager" value="e0d76193-971d-4b7b-aff8-b117a75683e1" />
+          <factory-entry name="targetEntityManager" value="82ff5052-a46f-45a8-9127-2238b0de2db4" />
+        </datasource-mapping>
+        <naming-strategy-map>
+          <unit-entry name="entityManagerFactory" />
+          <unit-entry name="proxyEntityManager" />
+          <unit-entry name="sourceEntityManager" />
+          <unit-entry name="targetEntityManager" />
+        </naming-strategy-map>
+      </configuration>
+    </facet>
+  </component>
+</module>

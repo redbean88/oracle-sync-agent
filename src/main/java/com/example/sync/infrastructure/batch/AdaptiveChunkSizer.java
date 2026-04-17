@@ -22,7 +22,7 @@ public class AdaptiveChunkSizer {
     @PostConstruct
     void init() { current.set(initial); }
 
-    public int currentSize() { return current.get(); }
+    public int getChunkSize() { return current.get(); }
 
     public void adjust(long insertMs) {
         int cur = current.get();

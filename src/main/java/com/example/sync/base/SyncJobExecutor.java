@@ -69,13 +69,13 @@ public class SyncJobExecutor {
         // 더 이상 처리할 데이터가 없거나, 제한 시간에 도달할 때까지 반복
         while (!shuttingDown) {
             long lastId = checkpointService.getLastId(jobName);
-            int chunkSize = chunkSizer.currentSize();
+            int chunkSize = chunkSizer.getChunkSize();
 
             // 1. 세부 단위(Chunk) 데이터 페치
             long readStart = System.currentTimeMillis();
             List<SourceRecordDto> records;
             try {
-                records = reader.fetchChunk(lastId, chunkSize);
+                records = reader.readChunk(lastId, chunkSize);
             } catch (Exception e) {
                 log.error("[SyncJob] 데이터 조회 중 오류 발생 (lastId: {})", lastId, e);
                 metrics.incrementReadError();

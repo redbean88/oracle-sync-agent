@@ -19,17 +19,30 @@ public class SourceDataReader {
     }
 
     @Transactional(readOnly = true, transactionManager = "sourceTransactionManager")
-    public List<SourceRecordDto> fetchChunk(long lastId, int chunkSize) {
+    public List<SourceRecordDto> readChunk(long lastId, int chunkSize) {
         return repository.findByLastIdWithLimit(lastId, PageRequest.of(0, chunkSize))
                 .stream()
-                .map(order -> new SourceRecordDto(
-                        order.getId(),
-                        order.getOrderNo(),
-                        order.getCustomerId(),
-                        order.getStatus(),
-                        order.getAmount(),
-                        order.getCreatedAt()
-                ))
+                .map(this::convertToDto)
                 .collect(Collectors.toList());
+    }
+
+    /** 재시도 복구를 위한 ID 기반 데이터 조회 */
+    @Transactional(readOnly = true, transactionManager = "sourceTransactionManager")
+    public List<SourceRecordDto> fetchByIds(List<Long> ids) {
+        return repository.findAllById(ids)
+                .stream()
+                .map(this::convertToDto)
+                .collect(Collectors.toList());
+    }
+
+    private SourceRecordDto convertToDto(com.example.sync.domain.source.SourceOrder order) {
+        return new SourceRecordDto(
+                order.getId(),
+                order.getOrderNo(),
+                order.getCustomerId(),
+                order.getStatus(),
+                order.getAmount(),
+                order.getCreatedAt()
+        );
     }
 }
