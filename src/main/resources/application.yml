@@ -8,20 +8,28 @@ spring:
     timeout-per-shutdown-phase: 30s
   datasource:
     source:
-      url: jdbc:oracle:thin:@source-host:1521/SRCDB
-      username: sync_reader
-      password: ${SOURCE_DB_PASSWORD:default_pass}
+      jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
+      username: source
+      password: 1234
       driver-class-name: oracle.jdbc.OracleDriver
       hikari:
         maximum-pool-size: 5
         connection-timeout: 30000
     target:
-      url: jdbc:oracle:thin:@target-host:1521/TGTDB
-      username: sync_writer
-      password: ${TARGET_DB_PASSWORD:default_pass}
+      jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
+      username: target
+      password: 1234
       driver-class-name: oracle.jdbc.OracleDriver
       hikari:
         maximum-pool-size: 10
+        connection-timeout: 30000
+    proxy:
+      jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
+      username: proxy
+      password: 1234
+      driver-class-name: oracle.jdbc.OracleDriver
+      hikari:
+        maximum-pool-size: 5
         connection-timeout: 30000
 
 sync:
@@ -41,3 +49,5 @@ management:
     export:
       prometheus:
         enabled: true
+server:
+  port: 8090

@@ -1,6 +1,6 @@
 package com.example.sync.batch;
 
-import com.example.sync.infra.batch.AdaptiveChunkSizer;
+import com.example.sync.infrastructure.batch.AdaptiveChunkSizer;
 import org.junit.jupiter.api.Test;
 import static org.assertj.core.api.Assertions.assertThat;
 

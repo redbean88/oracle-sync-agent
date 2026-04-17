@@ -1,6 +1,6 @@
 package com.example.sync.repository.reader;
 
-import com.example.sync.domain.dto.SourceRecordDto;
+import com.example.sync.dto.SourceRecordDto;
 import com.example.sync.repository.source.SourceOrderRepository;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
