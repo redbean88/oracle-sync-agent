@@ -31,6 +31,20 @@ public class SourceOrder {
 
     public SourceOrder() {}
 
+    private SourceOrder(Builder builder) {
+        this.id = builder.id;
+        this.orderNo = builder.orderNo;
+        this.customerId = builder.customerId;
+        this.status = builder.status;
+        this.amount = builder.amount;
+        this.createdAt = builder.createdAt;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     
@@ -48,4 +62,47 @@ public class SourceOrder {
     
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
+
+    public static class Builder {
+        private Long id;
+        private String orderNo;
+        private Long customerId;
+        private String status;
+        private BigDecimal amount;
+        private LocalDateTime createdAt;
+
+        public Builder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder orderNo(String orderNo) {
+            this.orderNo = orderNo;
+            return this;
+        }
+
+        public Builder customerId(Long customerId) {
+            this.customerId = customerId;
+            return this;
+        }
+
+        public Builder status(String status) {
+            this.status = status;
+            return this;
+        }
+
+        public Builder amount(BigDecimal amount) {
+            this.amount = amount;
+            return this;
+        }
+
+        public Builder createdAt(LocalDateTime createdAt) {
+            this.createdAt = createdAt;
+            return this;
+        }
+
+        public SourceOrder build() {
+            return new SourceOrder(this);
+        }
+    }
 }

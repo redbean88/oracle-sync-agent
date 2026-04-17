@@ -33,16 +33,15 @@ public class TargetDataWriter {
     )
     @Transactional(transactionManager = "targetTransactionManager")
     public void bulkUpsert(List<SourceRecordDto> records) {
-        List<TargetOrder> targetOrders = records.stream().map(r -> {
-            TargetOrder t = new TargetOrder();
-            t.setId(r.getId());
-            t.setOrderNo(r.getOrderNo());
-            t.setCustomerId(r.getCustomerId());
-            t.setStatus(r.getStatus());
-            t.setAmount(r.getAmount());
-            t.setCreatedAt(r.getCreatedAt());
-            return t;
-        }).collect(Collectors.toList());
+        List<TargetOrder> targetOrders = records.stream().map(r -> TargetOrder.builder()
+            .id(r.getId())
+            .orderNo(r.getOrderNo())
+            .customerId(r.getCustomerId())
+            .status(r.getStatus())
+            .amount(r.getAmount())
+            .createdAt(r.getCreatedAt())
+            .build()
+        ).collect(Collectors.toList());
         
         repository.saveAll(targetOrders);
     }

@@ -25,12 +25,17 @@ public class SyncCheckpoint {
 
     public SyncCheckpoint() {}
 
-    public SyncCheckpoint(String jobName, Long lastId, LocalDateTime lastSyncedAt, Long processedCnt) {
-        this.jobName = jobName;
-        this.lastId = lastId;
-        this.lastSyncedAt = lastSyncedAt;
-        this.processedCnt = processedCnt;
+    private SyncCheckpoint(Builder builder) {
+        this.jobName = builder.jobName;
+        this.lastId = builder.lastId;
+        this.lastSyncedAt = builder.lastSyncedAt;
+        this.processedCnt = builder.processedCnt;
     }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
 
     public String getJobName() { return jobName; }
     public void setJobName(String jobName) { this.jobName = jobName; }
@@ -43,4 +48,35 @@ public class SyncCheckpoint {
     
     public Long getProcessedCnt() { return processedCnt; }
     public void setProcessedCnt(Long processedCnt) { this.processedCnt = processedCnt; }
+
+    public static class Builder {
+        private String jobName;
+        private Long lastId = 0L;
+        private LocalDateTime lastSyncedAt;
+        private Long processedCnt = 0L;
+
+        public Builder jobName(String jobName) {
+            this.jobName = jobName;
+            return this;
+        }
+
+        public Builder lastId(Long lastId) {
+            this.lastId = lastId;
+            return this;
+        }
+
+        public Builder lastSyncedAt(LocalDateTime lastSyncedAt) {
+            this.lastSyncedAt = lastSyncedAt;
+            return this;
+        }
+
+        public Builder processedCnt(Long processedCnt) {
+            this.processedCnt = processedCnt;
+            return this;
+        }
+
+        public SyncCheckpoint build() {
+            return new SyncCheckpoint(this);
+        }
+    }
 }

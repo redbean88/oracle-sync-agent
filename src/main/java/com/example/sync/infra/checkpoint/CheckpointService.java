@@ -31,7 +31,12 @@ public class CheckpointService {
             checkpoint.setLastSyncedAt(LocalDateTime.now());
             checkpoint.setProcessedCnt(checkpoint.getProcessedCnt() + processedCnt);
         } else {
-            checkpoint = new SyncCheckpoint(jobName, lastId, LocalDateTime.now(), (long) processedCnt);
+            checkpoint = SyncCheckpoint.builder()
+                .jobName(jobName)
+                .lastId(lastId)
+                .lastSyncedAt(LocalDateTime.now())
+                .processedCnt((long) processedCnt)
+                .build();
         }
         repository.save(checkpoint);
     }

@@ -36,6 +36,22 @@ public class BatchRetryQueueEntity {
 
     public BatchRetryQueueEntity() {}
 
+    private BatchRetryQueueEntity(Builder builder) {
+        this.id = builder.id;
+        this.sourceIds = builder.sourceIds;
+        this.errorType = builder.errorType;
+        this.errorMessage = builder.errorMessage;
+        this.retryCount = builder.retryCount;
+        this.maxRetry = builder.maxRetry;
+        this.nextRetryAt = builder.nextRetryAt;
+        this.status = builder.status;
+    }
+
+    public static Builder builder() {
+        return new Builder();
+    }
+
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -59,4 +75,59 @@ public class BatchRetryQueueEntity {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public static class Builder {
+        private Long id;
+        private String sourceIds;
+        private String errorType;
+        private String errorMessage;
+        private int retryCount = 0;
+        private int maxRetry = 5;
+        private LocalDateTime nextRetryAt;
+        private String status = "PENDING";
+
+        public Builder id(Long id) {
+            this.id = id;
+            return this;
+        }
+
+        public Builder sourceIds(String sourceIds) {
+            this.sourceIds = sourceIds;
+            return this;
+        }
+
+        public Builder errorType(String errorType) {
+            this.errorType = errorType;
+            return this;
+        }
+
+        public Builder errorMessage(String errorMessage) {
+            this.errorMessage = errorMessage;
+            return this;
+        }
+
+        public Builder retryCount(int retryCount) {
+            this.retryCount = retryCount;
+            return this;
+        }
+
+        public Builder maxRetry(int maxRetry) {
+            this.maxRetry = maxRetry;
+            return this;
+        }
+
+        public Builder nextRetryAt(LocalDateTime nextRetryAt) {
+            this.nextRetryAt = nextRetryAt;
+            return this;
+        }
+
+        public Builder status(String status) {
+            this.status = status;
+            return this;
+        }
+
+        public BatchRetryQueueEntity build() {
+            return new BatchRetryQueueEntity(this);
+        }
+    }
 }

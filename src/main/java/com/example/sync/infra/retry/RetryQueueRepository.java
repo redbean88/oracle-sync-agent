@@ -18,14 +18,15 @@ public class RetryQueueRepository {
     }
 
     public void save(BatchRetryQueue entry) {
-        BatchRetryQueueEntity entity = new BatchRetryQueueEntity();
-        entity.setSourceIds(entry.getSourceIds());
-        entity.setErrorType(entry.getErrorType());
-        entity.setErrorMessage(entry.getErrorMessage());
-        entity.setRetryCount(entry.getRetryCount());
-        entity.setMaxRetry(entry.getMaxRetry());
-        entity.setNextRetryAt(entry.getNextRetryAt());
-        entity.setStatus(entry.getStatus());
+        BatchRetryQueueEntity entity = BatchRetryQueueEntity.builder()
+            .sourceIds(entry.getSourceIds())
+            .errorType(entry.getErrorType())
+            .errorMessage(entry.getErrorMessage())
+            .retryCount(entry.getRetryCount())
+            .maxRetry(entry.getMaxRetry())
+            .nextRetryAt(entry.getNextRetryAt())
+            .status(entry.getStatus())
+            .build();
         jpaRepository.save(entity);
     }
 
