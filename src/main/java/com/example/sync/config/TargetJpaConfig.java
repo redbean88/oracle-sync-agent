@@ -11,9 +11,6 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
 import org.springframework.transaction.PlatformTransactionManager;
-import com.querydsl.jpa.impl.JPAQueryFactory;
-import com.querydsl.sql.OracleTemplates;
-import com.querydsl.sql.SQLQueryFactory;
 
 import javax.persistence.EntityManager;
 import javax.sql.DataSource;
@@ -58,15 +55,4 @@ public class TargetJpaConfig {
         return new JpaTransactionManager(entityManagerFactory.getObject());
     }
 
-    @Bean
-    public JPAQueryFactory targetQueryFactory(@Qualifier("targetEntityManager") EntityManager entityManager) {
-        return new JPAQueryFactory(entityManager);
-    }
-
-    @Bean
-    public SQLQueryFactory targetSqlQueryFactory(@Qualifier("targetDataSource") DataSource dataSource) {
-        com.querydsl.sql.SQLTemplates templates = com.querydsl.sql.OracleTemplates.builder().build();
-        com.querydsl.sql.Configuration configuration = new com.querydsl.sql.Configuration(templates);
-        return new SQLQueryFactory(configuration, dataSource);
-    }
 }
