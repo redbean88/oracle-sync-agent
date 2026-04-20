@@ -1,6 +1,8 @@
 package com.example.sync.service;
 
 import com.example.sync.infrastructure.batch.AdaptiveChunkSizer;
+import com.example.sync.infrastructure.exception.PermanentSyncException;
+import com.example.sync.infrastructure.exception.TransientSyncException;
 import com.example.sync.service.checkpoint.CheckpointService;
 import com.example.sync.service.monitoring.LagMonitor;
 import com.example.sync.service.monitoring.SyncMetrics;
@@ -9,6 +11,7 @@ import com.example.sync.domain.source.dto.SourceRecordDto;
 import com.example.sync.service.retry.RetryQueueProcessor;
 import com.example.sync.service.writer.TargetDataWriter;
 import javax.annotation.PreDestroy;
+import net.javacrumbs.shedlock.core.LockAssert;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -55,6 +58,9 @@ public class SyncJobExecutor {
      * 조회된 전체 건수를 chunkSize 단위로 세분화하여 루프를 돌며 처리합니다.
      */
     public void execute() {
+        // ShedLock 보유 상태가 아닌 호출은 split-brain 가능성이 있으므로 즉시 차단
+        LockAssert.assertLocked();
+
         if (shuttingDown) {
             log.warn("[SyncJob] Shutdown 진행 중이므로 새로운 작업을 시작하지 않습니다.");
             return;
@@ -92,10 +98,18 @@ public class SyncJobExecutor {
             long writeStart = System.currentTimeMillis();
             try {
                 writer.bulkUpsert(records);
-            } catch (Exception e) {
-                log.error("[SyncJob] 데이터 적재 중 오류 발생 - 재시도 큐로 이동", e);
+            } catch (PermanentSyncException e) {
+                log.error("[SyncJob] 영구 오류 발생 - 즉시 DLQ 이동", e);
+                retryProcessor.enqueueDead(records, e);
+                break;
+            } catch (TransientSyncException e) {
+                log.warn("[SyncJob] 일시적 오류 발생 - 재시도 큐로 이동", e);
                 retryProcessor.enqueue(records, e);
-                break; // 오류 시 정합성을 위해 루프 중단
+                break;
+            } catch (Exception e) {
+                log.error("[SyncJob] 분류 불가 오류 - 재시도 큐로 이동 (보수적)", e);
+                retryProcessor.enqueue(records, e);
+                break;
             }
             long writeDuration = System.currentTimeMillis() - writeStart;
 
@@ -105,7 +119,7 @@ public class SyncJobExecutor {
             chunkSizer.adjust(writeDuration);
 
             long newLastId = records.get(records.size() - 1).getId();
-            checkpointService.update(jobName, newLastId, records.size());
+            checkpointService.update(jobName, newLastId, records.size(), chunkSizer.getChunkSize());
             totalProcessedCount += records.size();
 
             log.info("[SyncJob] 청크 처리 완료: {} 건 (누적: {}) / LastID: {}", 

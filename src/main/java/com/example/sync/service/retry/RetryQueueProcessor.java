@@ -6,6 +6,7 @@ import com.example.sync.service.writer.TargetDataWriter;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
@@ -17,19 +18,37 @@ import java.util.stream.Collectors;
 public class RetryQueueProcessor {
 
     private static final Logger log = LoggerFactory.getLogger(RetryQueueProcessor.class);
+    private static final int CLAIM_BATCH_SIZE = 50;
 
     private final RetryQueueRepository repo;
     private final SourceDataReader sourceDataReader;
     private final TargetDataWriter targetDataWriter;
+    private final DeadLetterHandler deadLetterHandler;
 
-    public RetryQueueProcessor(RetryQueueRepository repo, SourceDataReader sourceDataReader, TargetDataWriter targetDataWriter) {
+    public RetryQueueProcessor(RetryQueueRepository repo,
+                               SourceDataReader sourceDataReader,
+                               TargetDataWriter targetDataWriter,
+                               DeadLetterHandler deadLetterHandler) {
         this.repo = repo;
         this.sourceDataReader = sourceDataReader;
         this.targetDataWriter = targetDataWriter;
+        this.deadLetterHandler = deadLetterHandler;
     }
 
-    /** 실패 시 ID 리스트만 Proxy DB에 기록 */
+    /** 실패 시 ID 리스트를 재시도 대상으로 Proxy DB에 기록 (PENDING) */
     public void enqueue(List<SourceRecordDto> records, Exception e) {
+        persistQueueEntry(records, e, 3, RetryStatus.PENDING, LocalDateTime.now().plusMinutes(1));
+        log.warn("[RetryQueue] {} 건의 데이터 ID를 재시도 큐에 등록", records.size());
+    }
+
+    /** Permanent 오류 — 재시도하지 않고 즉시 DEAD */
+    public void enqueueDead(List<SourceRecordDto> records, Exception e) {
+        persistQueueEntry(records, e, 0, RetryStatus.DEAD, LocalDateTime.now());
+        log.error("[RetryQueue] {} 건의 데이터가 영구 오류로 DEAD 처리", records.size());
+    }
+
+    private void persistQueueEntry(List<SourceRecordDto> records, Exception e,
+                                    int maxRetry, String status, LocalDateTime nextRetryAt) {
         String ids = records.stream()
                 .map(r -> String.valueOf(r.getId()))
                 .collect(Collectors.joining(","));
@@ -39,53 +58,55 @@ public class RetryQueueProcessor {
                 .errorType(e.getClass().getSimpleName())
                 .errorMessage(limitMessage(e.getMessage()))
                 .retryCount(0)
-                .maxRetry(3)
-                .nextRetryAt(LocalDateTime.now().plusMinutes(1)) // 1분 후부터 시도
-                .status("PENDING")
+                .maxRetry(maxRetry)
+                .nextRetryAt(nextRetryAt)
+                .status(status)
                 .build();
-
         repo.save(entry);
-        log.warn("[RetryQueue] {} 건의 데이터 ID를 재시도 큐(Proxy DB)에 등록했습니다.", records.size());
     }
 
-    /** 스케줄에 의해 호출되어 실제로 복구(Retry) 수행 */
-    @Transactional(transactionManager = "proxyTransactionManager")
+    /** 스케줄에 의해 호출. CLAIM → item 단위 독립 트랜잭션 처리. */
     public void processQueue() {
-        List<BatchRetryQueue> retryTargets = repo.findRetryable(LocalDateTime.now());
-        if (retryTargets.isEmpty()) return;
+        List<BatchRetryQueue> claimed = repo.claimPending(LocalDateTime.now(), CLAIM_BATCH_SIZE);
+        if (claimed.isEmpty()) return;
 
-        for (BatchRetryQueue item : retryTargets) {
-            try {
-                // 1. 저장된 ID 파싱
-                List<Long> ids = Arrays.stream(item.getSourceIds().split(","))
-                        .map(Long::valueOf)
-                        .collect(Collectors.toList());
+        log.info("[RetryQueue] {} 건 claim 완료", claimed.size());
+        for (BatchRetryQueue item : claimed) {
+            processOneItem(item);
+        }
+    }
 
-                // 2. Source DB에서 데이터 다시 읽기
-                List<SourceRecordDto> records = sourceDataReader.fetchByIds(ids);
+    /** item 단위 독립 트랜잭션 — 일부 실패가 다른 item에 영향을 주지 않도록 격리. */
+    @Transactional(transactionManager = "proxyTransactionManager", propagation = Propagation.REQUIRES_NEW)
+    void processOneItem(BatchRetryQueue item) {
+        try {
+            List<Long> ids = Arrays.stream(item.getSourceIds().split(","))
+                    .map(Long::valueOf)
+                    .collect(Collectors.toList());
 
-                if (records.isEmpty()) {
-                    log.error("[RetryTask] 원본 데이터를 조회할 수 없습니다. (IDs: {})", item.getSourceIds());
-                    item.setStatus("FAILED");
-                } else {
-                    // 3. 실제 복구 실행
-                    targetDataWriter.bulkUpsert(records);
-                    item.setStatus("SUCCESS");
-                    log.info("[RetryTask] 성공적으로 복구 적합 완료 (IDs: {})", item.getSourceIds());
-                }
-            } catch (Exception e) {
-                // 4. 실패 시 관리
-                int currentRetry = item.getRetryCount() + 1;
-                if (currentRetry >= item.getMaxRetry()) {
-                    item.setStatus("DLQ");
-                    log.error("[RetryTask] 최종 재시도 실패 - DLQ 이동 (IDs: {})", item.getSourceIds());
-                } else {
-                    item.setRetryCount(currentRetry);
-                    item.setNextRetryAt(LocalDateTime.now().plusMinutes(5L * currentRetry));
-                    log.warn("[RetryTask] 재시도 실패 ({}회), 다음 실행: {}", currentRetry, item.getNextRetryAt());
-                }
+            List<SourceRecordDto> records = sourceDataReader.fetchByIds(ids);
+
+            if (records.isEmpty()) {
+                log.error("[RetryTask] 원본 데이터 조회 실패 (IDs: {}) - FAILED", item.getSourceIds());
+                repo.markDead(item.getId());
+                deadLetterHandler.handle(item);
+                return;
             }
-            repo.save(item);
+
+            targetDataWriter.bulkUpsert(records);
+            repo.markSuccess(item.getId());
+            log.info("[RetryTask] 복구 완료 (IDs: {})", item.getSourceIds());
+        } catch (Exception e) {
+            int currentRetry = item.getRetryCount() + 1;
+            if (currentRetry >= item.getMaxRetry()) {
+                repo.markDead(item.getId());
+                deadLetterHandler.handle(item);
+                log.error("[RetryTask] 최종 재시도 실패 - DEAD 이동 (IDs: {})", item.getSourceIds(), e);
+            } else {
+                LocalDateTime next = LocalDateTime.now().plusMinutes(5L * currentRetry);
+                repo.incrementRetry(item.getId(), next);
+                log.warn("[RetryTask] 재시도 실패 ({}회), 다음 실행: {}", currentRetry, next);
+            }
         }
     }
 

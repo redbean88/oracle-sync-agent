@@ -10,7 +10,7 @@ import org.springframework.context.annotation.Configuration;
 import javax.sql.DataSource;
 
 @Configuration
-@EnableSchedulerLock(defaultLockAtMostFor = "PT55S")
+@EnableSchedulerLock(defaultLockAtMostFor = "PT10M")
 public class ShedLockConfig {
 
     @Bean

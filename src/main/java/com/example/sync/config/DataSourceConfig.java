@@ -36,7 +36,8 @@ public class DataSourceConfig {
     @Primary
     public JdbcTemplate sourceJdbcTemplate(@Qualifier("sourceDataSource") DataSource ds) {
         JdbcTemplate jt = new JdbcTemplate(ds);
-        jt.setFetchSize(1000);
+        // chunk-size-max(10000)의 절반 — JDBC row prefetch buffer 메모리 사용과 네트워크 왕복의 절충
+        jt.setFetchSize(5000);
         return jt;
     }
 

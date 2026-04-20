@@ -9,6 +9,7 @@ import com.example.sync.service.reader.SourceDataReader;
 import com.example.sync.domain.source.dto.SourceRecordDto;
 import com.example.sync.service.retry.RetryQueueProcessor;
 import com.example.sync.service.writer.TargetDataWriter;
+import net.javacrumbs.shedlock.core.LockAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.InjectMocks;
@@ -21,6 +22,7 @@ import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
@@ -42,6 +44,8 @@ class SyncJobExecutorMockTest {
     @BeforeEach
     void setUp() {
         MockitoAnnotations.openMocks(this);
+        // 단위 테스트에서는 ShedLock 보유 상태 우회
+        LockAssert.TestHelper.makeAllAssertsPass(true);
     }
 
     @Test
@@ -60,7 +64,7 @@ class SyncJobExecutorMockTest {
 
         // Then
         verify(writer, times(1)).bulkUpsert(records);
-        verify(checkpointService, times(1)).update(eq("ORDERS_SYNC"), eq(101L), eq(1));
+        verify(checkpointService, times(1)).update(eq("ORDERS_SYNC"), eq(101L), eq(1), eq(500));
         verify(chunkSizer, times(1)).adjust(anyLong());
         verify(retryProcessor, times(1)).processQueue();
     }
@@ -77,6 +81,6 @@ class SyncJobExecutorMockTest {
 
         // Then
         verify(writer, never()).bulkUpsert(anyList());
-        verify(checkpointService, never()).update(anyString(), anyLong(), anyInt());
+        verify(checkpointService, never()).update(anyString(), anyLong(), anyInt(), any());
     }
 }

@@ -1,74 +1,69 @@
 package com.example.sync.service.writer;
 
 import com.example.sync.domain.source.dto.SourceRecordDto;
-import com.querydsl.core.types.dsl.PathBuilder;
-import com.querydsl.sql.RelationalPathBase;
-import com.querydsl.sql.SQLQueryFactory;
-import com.querydsl.sql.dml.SQLInsertClause;
-import com.querydsl.sql.dml.SQLUpdateClause;
+import com.example.sync.infrastructure.exception.OracleExceptionClassifier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.dao.DataAccessException;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
+import java.sql.PreparedStatement;
+import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 public class TargetDataWriter {
 
     private static final Logger log = LoggerFactory.getLogger(TargetDataWriter.class);
 
-    private final SQLQueryFactory sqlQueryFactory;
+    private static final String MERGE_SQL =
+            "MERGE INTO orders_target t " +
+            "USING (SELECT ? AS id, ? AS order_no, ? AS customer_id, " +
+            "              ? AS status, ? AS amount, ? AS created_at FROM dual) s " +
+            "ON (t.id = s.id) " +
+            "WHEN MATCHED THEN UPDATE SET " +
+            "     t.status = s.status, t.amount = s.amount, t.order_no = s.order_no " +
+            "WHEN NOT MATCHED THEN INSERT " +
+            "     (id, order_no, customer_id, status, amount, created_at) " +
+            "     VALUES (s.id, s.order_no, s.customer_id, s.status, s.amount, s.created_at)";
 
-    public TargetDataWriter(@Qualifier("targetSqlQueryFactory") SQLQueryFactory sqlQueryFactory) {
-        this.sqlQueryFactory = sqlQueryFactory;
+    private final JdbcTemplate targetJdbcTemplate;
+
+    public TargetDataWriter(@Qualifier("targetJdbcTemplate") JdbcTemplate targetJdbcTemplate) {
+        this.targetJdbcTemplate = targetJdbcTemplate;
     }
 
     @Transactional(transactionManager = "targetTransactionManager")
     public void bulkUpsert(List<SourceRecordDto> records) {
         if (records.isEmpty()) return;
 
-        // SQLQueryFactory는 RelationalPath 인터페이스를 요구하므로 RelationalPathBase를 정의합니다.
-        RelationalPathBase<Object> target = new RelationalPathBase<>(Object.class, "t", null, "orders_target");
-        PathBuilder<Object> targetPath = new PathBuilder<>(Object.class, "t");
+        try {
+        int[] result = targetJdbcTemplate.batchUpdate(MERGE_SQL, new BatchPreparedStatementSetter() {
+                @Override
+                public void setValues(PreparedStatement ps, int i) throws SQLException {
+                    SourceRecordDto r = records.get(i);
+                    ps.setLong(1, r.getId());
+                    ps.setString(2, r.getOrderNo());
+                    ps.setLong(3, r.getCustomerId());
+                    ps.setString(4, r.getStatus());
+                    ps.setBigDecimal(5, r.getAmount());
+                    ps.setTimestamp(6, Timestamp.valueOf(r.getCreatedAt()));
+                }
 
-        // 1. 현재 배치 데이터 중 타겟에 이미 존재하는 ID 목록 조회
-        List<Long> ids = records.stream().map(SourceRecordDto::getId).collect(Collectors.toList());
-        Set<Long> existingIds = sqlQueryFactory.select(targetPath.get("id", Long.class))
-                .from(target)
-                .where(targetPath.get("id", Long.class).in(ids))
-                .fetch().stream().collect(Collectors.toSet());
-
-        // 2. 배치 처리를 위한 Clause 생성
-        SQLUpdateClause updateBatch = sqlQueryFactory.update(target);
-        SQLInsertClause insertBatch = sqlQueryFactory.insert(target);
-
-        for (SourceRecordDto record : records) {
-            if (existingIds.contains(record.getId())) {
-                updateBatch.set(targetPath.get("status", String.class), record.getStatus())
-                        .set(targetPath.get("amount", BigDecimal.class), record.getAmount())
-                        .set(targetPath.get("order_no", String.class), record.getOrderNo())
-                        .where(targetPath.get("id", Long.class).eq(record.getId()))
-                        .addBatch();
-            } else {
-                insertBatch.set(targetPath.get("id", Long.class), record.getId())
-                        .set(targetPath.get("order_no", String.class), record.getOrderNo())
-                        .set(targetPath.get("customer_id", Long.class), record.getCustomerId())
-                        .set(targetPath.get("status", String.class), record.getStatus())
-                        .set(targetPath.get("amount", BigDecimal.class), record.getAmount())
-                        .set(targetPath.get("created_at", Timestamp.class), Timestamp.valueOf(record.getCreatedAt()))
-                        .addBatch();
-            }
+                @Override
+                public int getBatchSize() {
+                    return records.size();
+                }
+            });
+            log.info("[MERGE] {} 건 upsert 완료", result.length);
+        } catch (DataAccessException dae) {
+            // Oracle error-code 기반 Transient/Permanent 분류 후 재throw
+            throw OracleExceptionClassifier.classify(dae);
         }
-
-        long updated = updateBatch.isEmpty() ? 0 : updateBatch.execute();
-        long inserted = insertBatch.isEmpty() ? 0 : insertBatch.execute();
-
-        log.info("[Clean-Bulk] Sync completed: {} updated, {} inserted", updated, inserted);
     }
 }

@@ -1,6 +1,7 @@
 package com.example.sync;
 
 import com.example.sync.service.SyncJobExecutor;
+import net.javacrumbs.shedlock.core.LockAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -35,21 +36,35 @@ class SyncIntegrationTest {
 
     @BeforeEach
     void setUp() {
+        // 통합 테스트에서 SyncJobExecutor를 직접 호출하기 위해 ShedLock 보유 우회
+        LockAssert.TestHelper.makeAllAssertsPass(true);
+
         // Source DB 초기화
         try { sourceJdbcTemplate.execute("DROP TABLE orders"); } catch (Exception ignored) {}
         sourceJdbcTemplate.execute("CREATE TABLE orders (id NUMBER PRIMARY KEY, order_no VARCHAR2(50), customer_id NUMBER, status VARCHAR2(20), amount NUMBER(10,2), created_at TIMESTAMP)");
-        
+
         // Target DB 초기화
         try { targetJdbcTemplate.execute("DROP TABLE orders_target"); } catch (Exception ignored) {}
         targetJdbcTemplate.execute("CREATE TABLE orders_target (id NUMBER PRIMARY KEY, order_no VARCHAR2(50), customer_id NUMBER, status VARCHAR2(20), amount NUMBER(10,2), created_at TIMESTAMP)");
 
-        // Proxy DB 초기화 (Metadata)
+        // Proxy DB 초기화 (Metadata) — V2 스키마 반영
         try { proxyJdbcTemplate.execute("DROP TABLE sync_checkpoint"); } catch (Exception ignored) {}
         try { proxyJdbcTemplate.execute("DROP TABLE batch_retry_queue"); } catch (Exception ignored) {}
         try { proxyJdbcTemplate.execute("DROP TABLE shedlock"); } catch (Exception ignored) {}
 
-        proxyJdbcTemplate.execute("CREATE TABLE sync_checkpoint (job_name VARCHAR2(100) PRIMARY KEY, last_id NUMBER DEFAULT 0, last_synced_at TIMESTAMP, processed_cnt NUMBER DEFAULT 0)");
-        proxyJdbcTemplate.execute("CREATE TABLE batch_retry_queue (id NUMBER GENERATED AS IDENTITY PRIMARY KEY, source_ids CLOB, error_type VARCHAR2(100), error_message CLOB, retry_count NUMBER DEFAULT 0, max_retry NUMBER DEFAULT 5, next_retry_at TIMESTAMP, status VARCHAR2(20) DEFAULT 'PENDING')");
+        proxyJdbcTemplate.execute("CREATE TABLE sync_checkpoint (" +
+                "job_name VARCHAR2(100) PRIMARY KEY, " +
+                "last_id NUMBER(19) DEFAULT 0, " +
+                "last_synced_at TIMESTAMP, " +
+                "processed_cnt NUMBER(19) DEFAULT 0, " +
+                "version NUMBER(19) DEFAULT 0 NOT NULL, " +
+                "chunk_size NUMBER(10))");
+        proxyJdbcTemplate.execute("CREATE TABLE batch_retry_queue (" +
+                "id NUMBER GENERATED AS IDENTITY PRIMARY KEY, " +
+                "source_ids CLOB, error_type VARCHAR2(100), error_message CLOB, " +
+                "retry_count NUMBER(10) DEFAULT 0, max_retry NUMBER(10) DEFAULT 5, " +
+                "next_retry_at TIMESTAMP, status VARCHAR2(20) DEFAULT 'PENDING')");
+        proxyJdbcTemplate.execute("CREATE INDEX idx_retry_pending_next ON batch_retry_queue (status, next_retry_at)");
         proxyJdbcTemplate.execute("CREATE TABLE shedlock (name VARCHAR2(64) PRIMARY KEY, lock_until TIMESTAMP, locked_at TIMESTAMP, locked_by VARCHAR2(255))");
 
         // 소스 데이터 삽입

@@ -4,6 +4,7 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.Id;
 import javax.persistence.Table;
+import javax.persistence.Version;
 import java.time.LocalDateTime;
 
 @Entity
@@ -23,6 +24,13 @@ public class SyncCheckpoint {
     @Column(name = "processed_cnt")
     private Long processedCnt = 0L;
 
+    @Version
+    @Column(name = "version", nullable = false)
+    private Long version = 0L;
+
+    @Column(name = "chunk_size")
+    private Integer chunkSize;
+
     public SyncCheckpoint() {}
 
     private SyncCheckpoint(Builder builder) {
@@ -30,6 +38,7 @@ public class SyncCheckpoint {
         this.lastId = builder.lastId;
         this.lastSyncedAt = builder.lastSyncedAt;
         this.processedCnt = builder.processedCnt;
+        this.chunkSize = builder.chunkSize;
     }
 
     public static Builder builder() {
@@ -49,11 +58,18 @@ public class SyncCheckpoint {
     public Long getProcessedCnt() { return processedCnt; }
     public void setProcessedCnt(Long processedCnt) { this.processedCnt = processedCnt; }
 
+    public Long getVersion() { return version; }
+    public void setVersion(Long version) { this.version = version; }
+
+    public Integer getChunkSize() { return chunkSize; }
+    public void setChunkSize(Integer chunkSize) { this.chunkSize = chunkSize; }
+
     public static class Builder {
         private String jobName;
         private Long lastId = 0L;
         private LocalDateTime lastSyncedAt;
         private Long processedCnt = 0L;
+        private Integer chunkSize;
 
         public Builder jobName(String jobName) {
             this.jobName = jobName;
@@ -72,6 +88,11 @@ public class SyncCheckpoint {
 
         public Builder processedCnt(Long processedCnt) {
             this.processedCnt = processedCnt;
+            return this;
+        }
+
+        public Builder chunkSize(Integer chunkSize) {
+            this.chunkSize = chunkSize;
             return this;
         }
 

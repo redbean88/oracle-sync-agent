@@ -3,6 +3,8 @@ package com.example.sync.domain.proxy;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
+import static com.example.sync.service.retry.RetryStatus.*;
+
 @Entity
 @Table(name = "batch_retry_queue")
 public class BatchRetryQueueEntity {
@@ -32,7 +34,7 @@ public class BatchRetryQueueEntity {
     private LocalDateTime nextRetryAt;
 
     @Column(name = "status", length = 20)
-    private String status = "PENDING";
+    private String status = PENDING;
 
     public BatchRetryQueueEntity() {}
 
@@ -84,7 +86,7 @@ public class BatchRetryQueueEntity {
         private int retryCount = 0;
         private int maxRetry = 5;
         private LocalDateTime nextRetryAt;
-        private String status = "PENDING";
+        private String status = PENDING;
 
         public Builder id(Long id) {
             this.id = id;

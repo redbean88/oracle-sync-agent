@@ -14,8 +14,23 @@ import java.util.List;
 @Repository
 public interface BatchRetryQueueJpaRepository extends JpaRepository<BatchRetryQueueEntity, Long> {
 
-    @Query("SELECT q FROM BatchRetryQueueEntity q WHERE q.status = 'PENDING' AND q.nextRetryAt <= :now")
-    List<BatchRetryQueueEntity> findRetryable(@Param("now") LocalDateTime now);
+    /**
+     * 재시도 대상을 원자적으로 CLAIM.
+     * Oracle 12c+ FOR UPDATE SKIP LOCKED 를 사용하여 다른 인스턴스가 잠근 row는 건너뜀.
+     * 호출자는 트랜잭션 내에서 반환된 엔티티의 status를 PROCESSING으로 전이 후 commit해야 함.
+     */
+    @Query(value =
+        "SELECT * FROM batch_retry_queue " +
+        "WHERE id IN (" +
+        "  SELECT id FROM batch_retry_queue " +
+        "  WHERE status = 'PENDING' AND next_retry_at <= :now " +
+        "  ORDER BY next_retry_at ASC " +
+        "  FETCH FIRST :limit ROWS ONLY" +
+        ") " +
+        "FOR UPDATE SKIP LOCKED",
+        nativeQuery = true)
+    List<BatchRetryQueueEntity> claimPendingForUpdate(@Param("now") LocalDateTime now,
+                                                      @Param("limit") int limit);
 
     @Modifying
     @Transactional
@@ -29,6 +44,6 @@ public interface BatchRetryQueueJpaRepository extends JpaRepository<BatchRetryQu
 
     @Modifying
     @Transactional
-    @Query("UPDATE BatchRetryQueueEntity q SET q.retryCount = q.retryCount + 1, q.nextRetryAt = :nextRetryAt WHERE q.id = :id")
+    @Query("UPDATE BatchRetryQueueEntity q SET q.retryCount = q.retryCount + 1, q.nextRetryAt = :nextRetryAt, q.status = 'PENDING' WHERE q.id = :id")
     void incrementRetry(@Param("id") Long id, @Param("nextRetryAt") LocalDateTime nextRetryAt);
 }

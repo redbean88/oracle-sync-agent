@@ -5,7 +5,7 @@ spring:
       ddl-auto: none
     show-sql: false
   lifecycle:
-    timeout-per-shutdown-phase: 30s
+    timeout-per-shutdown-phase: 6m
   datasource:
     source:
       jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
@@ -13,7 +13,7 @@ spring:
       password: 1234
       driver-class-name: oracle.jdbc.OracleDriver
       hikari:
-        maximum-pool-size: 5
+        maximum-pool-size: 10
         connection-timeout: 30000
     target:
       jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
@@ -21,7 +21,7 @@ spring:
       password: 1234
       driver-class-name: oracle.jdbc.OracleDriver
       hikari:
-        maximum-pool-size: 10
+        maximum-pool-size: 15
         connection-timeout: 30000
     proxy:
       jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
@@ -29,8 +29,9 @@ spring:
       password: 1234
       driver-class-name: oracle.jdbc.OracleDriver
       hikari:
-        maximum-pool-size: 5
+        maximum-pool-size: 15
         connection-timeout: 30000
+        leak-detection-threshold: 60000
 
 sync:
   chunk-size-initial: 2000
@@ -39,7 +40,7 @@ sync:
   lag-alert-threshold: 100000
   job-name: "ORDERS_SYNC"
   fixed-delay-ms: 60000
-  
+
 management:
   endpoints:
     web:

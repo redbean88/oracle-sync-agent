@@ -21,7 +21,7 @@ public class SyncJobScheduler {
     @Scheduled(fixedDelayString = "${sync.fixed-delay-ms:60000}")
     @SchedulerLock(
         name = "ORDERS_SYNC_LOCK",
-        lockAtMostFor  = "PT55S",
+        lockAtMostFor  = "PT10M",
         lockAtLeastFor = "PT10S"
     )
     public void runSyncJob() {
