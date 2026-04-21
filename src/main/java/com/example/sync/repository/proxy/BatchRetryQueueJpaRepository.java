@@ -22,7 +22,7 @@ public interface BatchRetryQueueJpaRepository extends JpaRepository<BatchRetryQu
         "SELECT * FROM batch_retry_queue " +
         "WHERE id IN (" +
         "  SELECT id FROM batch_retry_queue " +
-        "  WHERE status = 'PENDING' AND next_retry_at <= SYSTIMESTAMP " +
+        "  WHERE status = 'PENDING' AND next_retry_at <= CAST(SYSTIMESTAMP AS TIMESTAMP) " +
         "  ORDER BY next_retry_at ASC " +
         "  FETCH FIRST :limit ROWS ONLY" +
         ") " +
@@ -41,7 +41,7 @@ public interface BatchRetryQueueJpaRepository extends JpaRepository<BatchRetryQu
         "  (source_ids, error_type, error_message, retry_count, max_retry, next_retry_at, status) " +
         "VALUES " +
         "  (:sourceIds, :errorType, :errorMessage, 0, :maxRetry, " +
-        "   SYSTIMESTAMP + NUMTODSINTERVAL(:backoffSec, 'SECOND'), :status)",
+        "   CAST(SYSTIMESTAMP AS TIMESTAMP) + NUMTODSINTERVAL(:backoffSec, 'SECOND'), :status)",
         nativeQuery = true)
     void enqueueWithDbTime(@Param("sourceIds") String sourceIds,
                            @Param("errorType") String errorType,
@@ -59,7 +59,7 @@ public interface BatchRetryQueueJpaRepository extends JpaRepository<BatchRetryQu
     @Query(value =
         "UPDATE batch_retry_queue " +
         "SET retry_count = retry_count + 1, " +
-        "    next_retry_at = SYSTIMESTAMP + NUMTODSINTERVAL(:backoffSec, 'SECOND'), " +
+        "    next_retry_at = CAST(SYSTIMESTAMP AS TIMESTAMP) + NUMTODSINTERVAL(:backoffSec, 'SECOND'), " +
         "    status = 'PENDING' " +
         "WHERE id = :id",
         nativeQuery = true)
