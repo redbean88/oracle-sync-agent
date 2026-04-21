@@ -53,7 +53,7 @@ public class RetryQueueProcessor {
     }
 
     private void persistQueueEntry(List<SourceRecordDto> records, Exception e,
-                                    int maxRetry, String status, int backoffSec) {
+                                    int maxRetry, RetryStatus status, int backoffSec) {
         String ids = records.stream()
                 .map(r -> String.valueOf(r.getId()))
                 .collect(Collectors.joining(","));

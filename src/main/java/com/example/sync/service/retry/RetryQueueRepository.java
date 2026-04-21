@@ -26,7 +26,7 @@ public class RetryQueueRepository {
             entry.getErrorType(),
             entry.getErrorMessage(),
             entry.getMaxRetry(),
-            entry.getStatus(),
+            entry.getStatus() != null ? entry.getStatus().name() : RetryStatus.PENDING.name(),
             backoffSec
         );
     }
@@ -39,7 +39,7 @@ public class RetryQueueRepository {
     public List<BatchRetryQueue> claimPending(int limit) {
         List<BatchRetryQueueEntity> rows = jpaRepository.claimPendingForUpdate(limit);
         for (BatchRetryQueueEntity e : rows) {
-            e.setStatus(RetryStatus.PROCESSING);
+            e.setStatus(RetryStatus.PROCESSING.name());
         }
         jpaRepository.saveAll(rows);
         return rows.stream()
@@ -51,7 +51,7 @@ public class RetryQueueRepository {
                         .retryCount(e.getRetryCount())
                         .maxRetry(e.getMaxRetry())
                         .nextRetryAt(e.getNextRetryAt())
-                        .status(e.getStatus())
+                        .status(e.getStatus() != null ? RetryStatus.valueOf(e.getStatus()) : null)
                         .build())
                 .collect(Collectors.toList());
     }
