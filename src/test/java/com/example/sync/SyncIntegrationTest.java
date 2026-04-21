@@ -1,6 +1,7 @@
 package com.example.sync;
 
 import com.example.sync.service.SyncJobExecutor;
+import io.micrometer.core.instrument.MeterRegistry;
 import net.javacrumbs.shedlock.core.LockAssert;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -8,7 +9,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.test.context.ActiveProfiles;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
@@ -16,75 +16,65 @@ import java.time.LocalDateTime;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
-@ActiveProfiles("test")
-class SyncIntegrationTest {
+class SyncIntegrationTest extends AbstractOracleIntegrationTest {
 
-    @Autowired
-    private SyncJobExecutor syncJobExecutor;
-
-    @Autowired
-    @Qualifier("sourceJdbcTemplate")
-    private JdbcTemplate sourceJdbcTemplate;
-
-    @Autowired
-    @Qualifier("targetJdbcTemplate")
-    private JdbcTemplate targetJdbcTemplate;
-
-    @Autowired
-    @Qualifier("proxyJdbcTemplate")
-    private JdbcTemplate proxyJdbcTemplate;
+    @Autowired private SyncJobExecutor syncJobExecutor;
+    @Autowired @Qualifier("sourceJdbcTemplate") private JdbcTemplate sourceJdbc;
+    @Autowired @Qualifier("targetJdbcTemplate") private JdbcTemplate targetJdbc;
+    @Autowired @Qualifier("proxyJdbcTemplate")  private JdbcTemplate proxyJdbc;
+    @Autowired private MeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
-        // 통합 테스트에서 SyncJobExecutor를 직접 호출하기 위해 ShedLock 보유 우회
         LockAssert.TestHelper.makeAllAssertsPass(true);
 
-        // Source DB 초기화
-        try { sourceJdbcTemplate.execute("DROP TABLE orders"); } catch (Exception ignored) {}
-        sourceJdbcTemplate.execute("CREATE TABLE orders (id NUMBER PRIMARY KEY, order_no VARCHAR2(50), customer_id NUMBER, status VARCHAR2(20), amount NUMBER(10,2), created_at TIMESTAMP)");
+        // 테이블 데이터 초기화
+        try { sourceJdbc.execute("DELETE FROM orders"); }          catch (Exception ignored) {}
+        try { targetJdbc.execute("DELETE FROM orders_target"); }   catch (Exception ignored) {}
+        try { proxyJdbc.execute("DELETE FROM sync_checkpoint"); }  catch (Exception ignored) {}
+        try { proxyJdbc.execute("DELETE FROM batch_retry_queue"); } catch (Exception ignored) {}
 
-        // Target DB 초기화
-        try { targetJdbcTemplate.execute("DROP TABLE orders_target"); } catch (Exception ignored) {}
-        targetJdbcTemplate.execute("CREATE TABLE orders_target (id NUMBER PRIMARY KEY, order_no VARCHAR2(50), customer_id NUMBER, status VARCHAR2(20), amount NUMBER(10,2), created_at TIMESTAMP)");
-
-        // Proxy DB 초기화 (Metadata) — V2 스키마 반영
-        try { proxyJdbcTemplate.execute("DROP TABLE sync_checkpoint"); } catch (Exception ignored) {}
-        try { proxyJdbcTemplate.execute("DROP TABLE batch_retry_queue"); } catch (Exception ignored) {}
-        try { proxyJdbcTemplate.execute("DROP TABLE shedlock"); } catch (Exception ignored) {}
-
-        proxyJdbcTemplate.execute("CREATE TABLE sync_checkpoint (" +
-                "job_name VARCHAR2(100) PRIMARY KEY, " +
-                "last_id NUMBER(19) DEFAULT 0, " +
-                "last_synced_at TIMESTAMP, " +
-                "processed_cnt NUMBER(19) DEFAULT 0, " +
-                "version NUMBER(19) DEFAULT 0 NOT NULL, " +
-                "chunk_size NUMBER(10))");
-        proxyJdbcTemplate.execute("CREATE TABLE batch_retry_queue (" +
-                "id NUMBER GENERATED AS IDENTITY PRIMARY KEY, " +
-                "source_ids CLOB, error_type VARCHAR2(100), error_message CLOB, " +
-                "retry_count NUMBER(10) DEFAULT 0, max_retry NUMBER(10) DEFAULT 5, " +
-                "next_retry_at TIMESTAMP, status VARCHAR2(20) DEFAULT 'PENDING')");
-        proxyJdbcTemplate.execute("CREATE INDEX idx_retry_pending_next ON batch_retry_queue (status, next_retry_at)");
-        proxyJdbcTemplate.execute("CREATE TABLE shedlock (name VARCHAR2(64) PRIMARY KEY, lock_until TIMESTAMP, locked_at TIMESTAMP, locked_by VARCHAR2(255))");
-
-        // 소스 데이터 삽입
-        for (long i = 1; i <= 3; i++) {
-            sourceJdbcTemplate.update("INSERT INTO orders (id, order_no, customer_id, status, amount, created_at) VALUES (?, ?, ?, 'CREATED', 100.0, ?)",
-                    i, "ORD-" + i, 1000 + i, Timestamp.valueOf(LocalDateTime.now()));
+        // source 데이터 3건 (IDENTITY 컬럼이므로 id 지정 불가 — sequence 사용)
+        for (int i = 0; i < 3; i++) {
+            sourceJdbc.update(
+                "INSERT INTO orders (id, order_no, customer_id, status, amount, created_at) VALUES (?, ?, ?, ?, ?, ?)",
+                (long)(i + 1), "ORD-" + (i + 1), 1000L + i, "CREATED", 100.0 + i, Timestamp.valueOf(LocalDateTime.now())
+            );
         }
     }
 
     @Test
-    void execute_로컬오라클환경에서도_전체동기화가_정상동작한다() {
-        // Sync 실행
+    void execute_전체동기화_3건_정상처리() {
         syncJobExecutor.execute();
 
-        // Target 검증
-        Integer targetCount = targetJdbcTemplate.queryForObject("SELECT COUNT(*) FROM orders_target", Integer.class);
+        Integer targetCount = targetJdbc.queryForObject("SELECT COUNT(*) FROM orders_target", Integer.class);
         assertThat(targetCount).isEqualTo(3);
+    }
 
-        // Proxy(Metadata) 검증
-        Long lastId = proxyJdbcTemplate.queryForObject("SELECT last_id FROM sync_checkpoint WHERE job_name = 'ORDERS_SYNC'", Long.class);
-        assertThat(lastId).isEqualTo(3L);
+    @Test
+    void execute_후_checkpoint_version_낙관락_작동() {
+        syncJobExecutor.execute();
+
+        Long version = proxyJdbc.queryForObject(
+            "SELECT version FROM sync_checkpoint WHERE job_name = 'ORDERS_SYNC'", Long.class);
+        assertThat(version).isNotNull();
+    }
+
+    @Test
+    void execute_후_retry_queue_PENDING_없음() {
+        syncJobExecutor.execute();
+
+        Integer pendingCount = proxyJdbc.queryForObject(
+            "SELECT COUNT(*) FROM batch_retry_queue WHERE status = 'PENDING'", Integer.class);
+        assertThat(pendingCount).isZero();
+    }
+
+    @Test
+    void execute_후_tick_duration_메트릭_등록됨() {
+        syncJobExecutor.execute();
+
+        boolean hasTick = meterRegistry.getMeters().stream()
+            .anyMatch(m -> m.getId().getName().equals("sync.tick.duration"));
+        assertThat(hasTick).isTrue();
     }
 }

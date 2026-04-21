@@ -1,0 +1,6 @@
+/.claude/
+/.idea/
+/docker-compose.yml
+/Dockerfile
+/oracle-sync-agent.iml
+/target/

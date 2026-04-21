@@ -1,5 +1,7 @@
 package com.example.sync.config;
 
+import com.example.sync.infrastructure.MeasuringLockProvider;
+import com.example.sync.service.monitoring.SyncMetrics;
 import net.javacrumbs.shedlock.core.LockProvider;
 import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider;
 import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
@@ -14,12 +16,14 @@ import javax.sql.DataSource;
 public class ShedLockConfig {
 
     @Bean
-    public LockProvider lockProvider(@Qualifier("proxyDataSource") DataSource dataSource) {
-        return new JdbcTemplateLockProvider(
+    public LockProvider lockProvider(@Qualifier("proxyDataSource") DataSource dataSource,
+                                     SyncMetrics metrics) {
+        LockProvider jdbc = new JdbcTemplateLockProvider(
             JdbcTemplateLockProvider.Configuration.builder()
             .withJdbcTemplate(new org.springframework.jdbc.core.JdbcTemplate(dataSource))
             .usingDbTime()
             .build()
         );
+        return new MeasuringLockProvider(jdbc, metrics);
     }
 }

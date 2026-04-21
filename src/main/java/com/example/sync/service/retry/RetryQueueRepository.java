@@ -6,7 +6,6 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -19,17 +18,17 @@ public class RetryQueueRepository {
         this.jpaRepository = jpaRepository;
     }
 
-    public void save(BatchRetryQueue entry) {
-        BatchRetryQueueEntity entity = BatchRetryQueueEntity.builder()
-            .sourceIds(entry.getSourceIds())
-            .errorType(entry.getErrorType())
-            .errorMessage(entry.getErrorMessage())
-            .retryCount(entry.getRetryCount())
-            .maxRetry(entry.getMaxRetry())
-            .nextRetryAt(entry.getNextRetryAt())
-            .status(entry.getStatus())
-            .build();
-        jpaRepository.save(entity);
+    /** SYSTIMESTAMP + backoffSec으로 next_retry_at 설정. backoffSec=0이면 즉시 처리 가능. */
+    @Transactional(transactionManager = "proxyTransactionManager")
+    public void save(BatchRetryQueue entry, int backoffSec) {
+        jpaRepository.enqueueWithDbTime(
+            entry.getSourceIds(),
+            entry.getErrorType(),
+            entry.getErrorMessage(),
+            entry.getMaxRetry(),
+            entry.getStatus(),
+            backoffSec
+        );
     }
 
     /**
@@ -37,8 +36,8 @@ public class RetryQueueRepository {
      * 별도의 짧은 트랜잭션으로 실행하여 row lock을 빨리 해제.
      */
     @Transactional(transactionManager = "proxyTransactionManager", propagation = Propagation.REQUIRES_NEW)
-    public List<BatchRetryQueue> claimPending(LocalDateTime now, int limit) {
-        List<BatchRetryQueueEntity> rows = jpaRepository.claimPendingForUpdate(now, limit);
+    public List<BatchRetryQueue> claimPending(int limit) {
+        List<BatchRetryQueueEntity> rows = jpaRepository.claimPendingForUpdate(limit);
         for (BatchRetryQueueEntity e : rows) {
             e.setStatus(RetryStatus.PROCESSING);
         }
@@ -65,7 +64,12 @@ public class RetryQueueRepository {
         jpaRepository.markDead(id);
     }
 
-    public void incrementRetry(Long id, LocalDateTime nextRetryAt) {
-        jpaRepository.incrementRetry(id, nextRetryAt);
+    /** SYSTIMESTAMP 기준으로 backoffSec 후 재시도. */
+    public void incrementRetry(Long id, int backoffSec) {
+        jpaRepository.incrementRetryWithDbTime(id, backoffSec);
+    }
+
+    public long countPending() {
+        return jpaRepository.countPending();
     }
 }

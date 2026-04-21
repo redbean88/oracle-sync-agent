@@ -35,9 +35,13 @@ public class SyncJobExecutor {
     // 단일 스케줄 실행(Tick) 시 최대 실행 시간 (예: 5분)
     private static final long MAX_TICK_DURATION_MS = 300_000;
 
-    public SyncJobExecutor(CheckpointService checkpointService, SourceDataReader reader, TargetDataWriter writer, 
-                           AdaptiveChunkSizer chunkSizer, LagMonitor lagMonitor, 
-                           RetryQueueProcessor retryProcessor, SyncMetrics metrics) {
+    public SyncJobExecutor(CheckpointService checkpointService,
+                           SourceDataReader reader,
+                           TargetDataWriter writer,
+                           AdaptiveChunkSizer chunkSizer,
+                           LagMonitor lagMonitor,
+                           RetryQueueProcessor retryProcessor,
+                           SyncMetrics metrics) {
         this.checkpointService = checkpointService;
         this.reader = reader;
         this.writer = writer;
@@ -72,6 +76,7 @@ public class SyncJobExecutor {
 
         log.info("[SyncJob] 동기화 작업 시작 (연속 청크 처리 모드)");
 
+        try {
         // 더 이상 처리할 데이터가 없거나, 제한 시간에 도달할 때까지 반복
         while (!shuttingDown) {
             long lastId = checkpointService.getLastId(jobName);
@@ -122,8 +127,7 @@ public class SyncJobExecutor {
             checkpointService.update(jobName, newLastId, records.size(), chunkSizer.getChunkSize());
             totalProcessedCount += records.size();
 
-            log.info("[SyncJob] 청크 처리 완료: {} 건 (누적: {}) / LastID: {}", 
-                    records.size(), totalProcessedCount, newLastId);
+            log.info("[SyncJob] 청크 처리 완료: {} 건 (누적: {}) / LastID: {}", records.size(), totalProcessedCount, newLastId);
 
             // 4. 지연 모니터링
             lagMonitor.check(jobName, newLastId);
@@ -143,7 +147,11 @@ public class SyncJobExecutor {
 
         // 마지막으로 재시도 큐 처리
         retryProcessor.processQueue();
-        
-        log.info("[SyncJob] 이번 스케줄 Tick 종료. 최종 소요시간: {}ms", System.currentTimeMillis() - tickStartTime);
+
+        } finally {
+            long tickDuration = System.currentTimeMillis() - tickStartTime;
+            metrics.recordTickDuration(tickDuration);
+            log.info("[SyncJob] 이번 스케줄 Tick 종료. 최종 소요시간: {}ms", tickDuration);
+        }
     }
 }

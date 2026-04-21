@@ -54,5 +54,4 @@ public class TargetJpaConfig {
             @Qualifier("targetEntityManager") LocalContainerEntityManagerFactoryBean entityManagerFactory) {
         return new JpaTransactionManager(entityManagerFactory.getObject());
     }
-
 }

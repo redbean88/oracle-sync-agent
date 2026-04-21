@@ -83,4 +83,26 @@ class SyncJobExecutorMockTest {
         verify(writer, never()).bulkUpsert(anyList());
         verify(checkpointService, never()).update(anyString(), anyLong(), anyInt(), any());
     }
+
+    @Test
+    void execute_정상완료후_tickDuration_기록() {
+        when(checkpointService.getLastId(anyString())).thenReturn(0L);
+        when(chunkSizer.getChunkSize()).thenReturn(500);
+        when(reader.readChunk(anyLong(), anyInt())).thenReturn(Collections.emptyList());
+
+        syncJobExecutor.execute();
+
+        verify(metrics, times(1)).recordTickDuration(anyLong());
+    }
+
+    @Test
+    void execute_예외발생해도_tickDuration_기록_finally보장() {
+        when(checkpointService.getLastId(anyString())).thenReturn(0L);
+        when(chunkSizer.getChunkSize()).thenReturn(500);
+        when(reader.readChunk(anyLong(), anyInt())).thenThrow(new RuntimeException("강제 오류"));
+
+        syncJobExecutor.execute();
+
+        verify(metrics, times(1)).recordTickDuration(anyLong());
+    }
 }

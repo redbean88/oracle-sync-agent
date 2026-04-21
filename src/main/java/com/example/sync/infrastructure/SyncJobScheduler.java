@@ -1,11 +1,14 @@
 package com.example.sync.infrastructure;
 
 import com.example.sync.service.SyncJobExecutor;
+import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import net.javacrumbs.shedlock.spring.annotation.SchedulerLock;
+import org.slf4j.MDC;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import java.util.UUID;
 
 @Component
 public class SyncJobScheduler {
@@ -25,7 +28,15 @@ public class SyncJobScheduler {
         lockAtLeastFor = "PT10S"
     )
     public void runSyncJob() {
-        log.info("[SyncJob] tick 시작");
-        executor.execute();
+        String traceId = UUID.randomUUID().toString().substring(0, 8);
+        MDC.put("traceId", traceId);
+        MDC.put("instance", System.getenv().getOrDefault("HOSTNAME",
+                            System.getenv().getOrDefault("POD_NAME", "local")));
+        try {
+            log.info("[SyncJob] tick 시작");
+            executor.execute();
+        } finally {
+            MDC.clear();
+        }
     }
 }

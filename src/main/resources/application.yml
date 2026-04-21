@@ -15,23 +15,29 @@ spring:
       hikari:
         maximum-pool-size: 10
         connection-timeout: 30000
+        data-source-properties:
+          oracle.jdbc.ReadTimeout: 600000
     target:
       jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
       username: target
       password: 1234
       driver-class-name: oracle.jdbc.OracleDriver
       hikari:
-        maximum-pool-size: 15
+        maximum-pool-size: 10
         connection-timeout: 30000
+        data-source-properties:
+          oracle.jdbc.ReadTimeout: 600000
     proxy:
       jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
       username: proxy
       password: 1234
       driver-class-name: oracle.jdbc.OracleDriver
       hikari:
-        maximum-pool-size: 15
+        maximum-pool-size: 10
         connection-timeout: 30000
         leak-detection-threshold: 60000
+        data-source-properties:
+          oracle.jdbc.ReadTimeout: 600000
 
 sync:
   chunk-size-initial: 2000
@@ -46,6 +52,21 @@ management:
     web:
       exposure:
         include: prometheus, health, info
+  endpoint:
+    health:
+      show-details: always
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState, syncDatabases
+  health:
+    probes:
+      enabled: true
+    livenessstate:
+      enabled: true
+    readinessstate:
+      enabled: true
   metrics:
     export:
       prometheus:

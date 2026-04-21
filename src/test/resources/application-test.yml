@@ -6,23 +6,36 @@ spring:
     show-sql: true
   datasource:
     source:
-      jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
-      driver-class-name: oracle.jdbc.OracleDriver
+      jdbc-url: jdbc:oracle:thin:@${DB_HOST}:1521/FREEPDB1
       username: source
-      password: "1234"
+      password: 1234
+      driver-class-name: oracle.jdbc.OracleDriver
+      hikari:
+        maximum-pool-size: 5
+        connection-timeout: 30000
     target:
-      jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
-      driver-class-name: oracle.jdbc.OracleDriver
+      jdbc-url: jdbc:oracle:thin:@${DB_HOST}:1521/FREEPDB1
       username: target
-      password: "1234"
-    proxy:
-      jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
+      password: 1234
       driver-class-name: oracle.jdbc.OracleDriver
+      hikari:
+        maximum-pool-size: 5
+        connection-timeout: 30000
+    proxy:
+      jdbc-url: jdbc:oracle:thin:@${DB_HOST}:1521/FREEPDB1
       username: proxy
-      password: "1234"
-  
+      password: 1234
+      driver-class-name: oracle.jdbc.OracleDriver
+      hikari:
+        maximum-pool-size: 5
+        connection-timeout: 30000
   main:
     allow-bean-definition-overriding: true
 
 sync:
   fixed-delay-ms: 1000
+  chunk-size-initial: 100
+  chunk-size-min: 10
+  chunk-size-max: 500
+  lag-alert-threshold: 100000
+  job-name: "ORDERS_SYNC"

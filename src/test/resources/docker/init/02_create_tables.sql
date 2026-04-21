@@ -1,0 +1,50 @@
+-- source 사용자 테이블
+CREATE TABLE source.orders (
+    id          NUMBER(19) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    order_no    VARCHAR2(50),
+    customer_id NUMBER(19),
+    status      VARCHAR2(20),
+    amount      NUMBER(19,2),
+    created_at  TIMESTAMP
+);
+
+-- target 사용자 테이블
+CREATE TABLE target.orders_target (
+    id          NUMBER(19) PRIMARY KEY,
+    order_no    VARCHAR2(50),
+    customer_id NUMBER(19),
+    status      VARCHAR2(20),
+    amount      NUMBER(19,2),
+    created_at  TIMESTAMP
+);
+
+-- proxy 사용자 테이블
+CREATE TABLE proxy.sync_checkpoint (
+    job_name       VARCHAR2(100) PRIMARY KEY,
+    last_id        NUMBER(19)    DEFAULT 0,
+    last_synced_at TIMESTAMP,
+    processed_cnt  NUMBER(19)    DEFAULT 0,
+    version        NUMBER(19)    DEFAULT 0 NOT NULL,
+    chunk_size     NUMBER(10)
+);
+
+CREATE TABLE proxy.batch_retry_queue (
+    id            NUMBER(19) GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    source_ids    CLOB,
+    error_type    VARCHAR2(100),
+    error_message CLOB,
+    retry_count   NUMBER(10)   DEFAULT 0,
+    max_retry     NUMBER(10)   DEFAULT 5,
+    next_retry_at TIMESTAMP,
+    status        VARCHAR2(20) DEFAULT 'PENDING'
+);
+
+CREATE INDEX proxy.idx_retry_pending_next ON proxy.batch_retry_queue (status, next_retry_at);
+CREATE INDEX proxy.idx_retry_status ON proxy.batch_retry_queue (status);
+
+CREATE TABLE proxy.shedlock (
+    name       VARCHAR2(64)  PRIMARY KEY,
+    lock_until TIMESTAMP(3)  NOT NULL,
+    locked_at  TIMESTAMP(3)  NOT NULL,
+    locked_by  VARCHAR2(255) NOT NULL
+);
