@@ -41,7 +41,6 @@ public class SyncMetrics {
     public void recordTickDuration(long ms) { tickTimer.record(ms, TimeUnit.MILLISECONDS); }
     public void recordLag(long lag)      { lagGauge.set(lag); }
     public void incrementReadError()          { registry.counter("sync.read.error").increment(); }
-    public void incrementWriteError()         { registry.counter("sync.write.error").increment(); }
     public void incrementCheckpointRegression() { registry.counter("sync.checkpoint.regression_skip").increment(); }
     public void incrementRetryClaimZero()     { registry.counter("sync.retry.claim_zero").increment(); }
     public void incrementLockAcquired()       { registry.counter("sync.lock.acquisition_success").increment(); }

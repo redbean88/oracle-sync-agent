@@ -13,14 +13,14 @@ public class AdaptiveChunkSizer {
 
     private static final Logger log = LoggerFactory.getLogger(AdaptiveChunkSizer.class);
 
-    @Value("${sync.chunk-size-initial:2000}") private int initial;
-    @Value("${sync.chunk-size-min:500}")      private int min;
-    @Value("${sync.chunk-size-max:10000}")    private int max;
+    @Value("${sync.chunk-size-initial:2000}") private int initial = 2000;
+    @Value("${sync.chunk-size-min:500}")      private int min = 500;
+    @Value("${sync.chunk-size-max:10000}")    private int max = 10000;
 
     private final AtomicInteger current = new AtomicInteger();
 
     @PostConstruct
-    void init() { current.set(initial); }
+    public void init() { current.set(initial); }
 
     public int getChunkSize() { return current.get(); }
 

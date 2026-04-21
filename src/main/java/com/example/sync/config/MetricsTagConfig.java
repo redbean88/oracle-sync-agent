@@ -1,7 +1,6 @@
 package com.example.sync.config;
 
 import io.micrometer.core.instrument.MeterRegistry;
-import io.micrometer.core.instrument.config.MeterRegistryConfig;
 import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;
 import org.springframework.context.ApplicationListener;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -26,10 +25,6 @@ public class MetricsTagConfig {
     }
 
     private static String resolveInstanceId() {
-        String hostname = System.getenv("HOSTNAME");
-        if (hostname != null && !hostname.isEmpty()) return hostname;
-        String podName = System.getenv("POD_NAME");
-        if (podName != null && !podName.isEmpty()) return podName;
         return "local-" + UUID.randomUUID().toString().substring(0, 8);
     }
 }

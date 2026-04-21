@@ -30,13 +30,6 @@ public class CheckpointService {
                 .orElse(0L);
     }
 
-    @Transactional(transactionManager = "proxyTransactionManager", readOnly = true)
-    public Integer getChunkSize(String jobName) {
-        return repository.findById(jobName)
-                .map(SyncCheckpoint::getChunkSize)
-                .orElse(null);
-    }
-
     /**
      * 원자적 단조 증가 업데이트. split-brain 상황에서도 checkpoint 역진 방지.
      */
