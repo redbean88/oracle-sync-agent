@@ -1,6 +1,6 @@
 package com.example.sync.service.retry;
 
-import com.example.sync.domain.proxy.BatchRetryQueueEntity;
+import com.example.sync.domain.proxy.BatchRetryQueue;
 import com.example.sync.repository.proxy.BatchRetryQueueJpaRepository;
 import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Propagation;
@@ -18,32 +18,31 @@ public class RetryQueueRepository {
         this.jpaRepository = jpaRepository;
     }
 
-    /** SYSTIMESTAMP + backoffSec으로 next_retry_at 설정. backoffSec=0이면 즉시 처리 가능. */
     @Transactional(transactionManager = "proxyTransactionManager")
-    public void save(BatchRetryQueue entry, int backoffSec) {
+    public void save(com.example.sync.service.retry.BatchRetryQueue entry, int backoffSec) {
         jpaRepository.enqueueWithDbTime(
             entry.getSourceIds(),
             entry.getErrorType(),
             entry.getErrorMessage(),
             entry.getMaxRetry(),
             entry.getStatus() != null ? entry.getStatus().name() : RetryStatus.PENDING.name(),
-            backoffSec
+            backoffSec,
+            entry.getJobName() != null ? entry.getJobName() : "ORDERS_SYNC"
         );
     }
 
     /**
-     * FOR UPDATE SKIP LOCKED로 PENDING row들을 claim하고 status를 PROCESSING으로 전이.
-     * 별도의 짧은 트랜잭션으로 실행하여 row lock을 빨리 해제.
+     * job_name별로 PENDING 항목을 FOR UPDATE SKIP LOCKED으로 claim하고 PROCESSING으로 전이.
      */
     @Transactional(transactionManager = "proxyTransactionManager", propagation = Propagation.REQUIRES_NEW)
-    public List<BatchRetryQueue> claimPending(int limit) {
-        List<BatchRetryQueueEntity> rows = jpaRepository.claimPendingForUpdate(limit);
-        for (BatchRetryQueueEntity e : rows) {
+    public List<com.example.sync.service.retry.BatchRetryQueue> claimPending(String jobName, int limit) {
+        List<BatchRetryQueue> rows = jpaRepository.claimPendingForUpdate(jobName, limit);
+        for (BatchRetryQueue e : rows) {
             e.setStatus(RetryStatus.PROCESSING.name());
         }
         jpaRepository.saveAll(rows);
         return rows.stream()
-                .map(e -> BatchRetryQueue.builder()
+                .map(e -> com.example.sync.service.retry.BatchRetryQueue.builder()
                         .id(e.getId())
                         .sourceIds(e.getSourceIds())
                         .errorType(e.getErrorType())
@@ -52,6 +51,7 @@ public class RetryQueueRepository {
                         .maxRetry(e.getMaxRetry())
                         .nextRetryAt(e.getNextRetryAt())
                         .status(e.getStatus() != null ? RetryStatus.valueOf(e.getStatus()) : null)
+                        .jobName(e.getJobName())
                         .build())
                 .collect(Collectors.toList());
     }
@@ -64,12 +64,19 @@ public class RetryQueueRepository {
         jpaRepository.markDead(id);
     }
 
-    /** SYSTIMESTAMP 기준으로 backoffSec 후 재시도. */
     public void incrementRetry(Long id, int backoffSec) {
         jpaRepository.incrementRetryWithDbTime(id, backoffSec);
     }
 
-    public long countPending() {
-        return jpaRepository.countPending();
+    public long countPending(String jobName) {
+        return jpaRepository.countPending(jobName);
+    }
+
+    public int reapStuckProcessing(int staleSec) {
+        return jpaRepository.reapStuckProcessing(staleSec);
+    }
+
+    public int purgeOldSuccess(int retainSec) {
+        return jpaRepository.purgeOldSuccess(retainSec);
     }
 }

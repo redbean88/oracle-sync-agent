@@ -33,9 +33,16 @@ spring:
     allow-bean-definition-overriding: true
 
 sync:
-  fixed-delay-ms: 1000
-  chunk-size-initial: 100
-  chunk-size-min: 10
-  chunk-size-max: 500
-  lag-alert-threshold: 100000
-  job-name: "ORDERS_SYNC"
+  jobs:
+    - name: ORDERS_SYNC
+      enabled: true
+      fixed-delay-ms: 1000
+      chunk-size-initial: 100
+      chunk-size-min: 10
+      chunk-size-max: 500
+      lag-alert-threshold: 100000
+      retry:
+        max-retry: 3
+        initial-backoff-sec: 60
+        backoff-step-sec: 300
+        claim-batch-size: 50

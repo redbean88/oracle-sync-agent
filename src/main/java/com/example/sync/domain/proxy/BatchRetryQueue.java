@@ -3,11 +3,8 @@ package com.example.sync.domain.proxy;
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
-
-
 @Entity
-@Table(name = "batch_retry_queue")
-public class BatchRetryQueueEntity {
+public class BatchRetryQueue {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -36,9 +33,12 @@ public class BatchRetryQueueEntity {
     @Column(name = "status", length = 20)
     private String status = "PENDING";
 
-    public BatchRetryQueueEntity() {}
+    @Column(name = "job_name", length = 50)
+    private String jobName = "ORDERS_SYNC";
 
-    private BatchRetryQueueEntity(Builder builder) {
+    public BatchRetryQueue() {}
+
+    private BatchRetryQueue(Builder builder) {
         this.id = builder.id;
         this.sourceIds = builder.sourceIds;
         this.errorType = builder.errorType;
@@ -47,6 +47,7 @@ public class BatchRetryQueueEntity {
         this.maxRetry = builder.maxRetry;
         this.nextRetryAt = builder.nextRetryAt;
         this.status = builder.status;
+        this.jobName = builder.jobName;
     }
 
     public static Builder builder() {
@@ -55,28 +56,21 @@ public class BatchRetryQueueEntity {
 
 
     public Long getId() { return id; }
-    public void setId(Long id) { this.id = id; }
 
     public String getSourceIds() { return sourceIds; }
-    public void setSourceIds(String sourceIds) { this.sourceIds = sourceIds; }
 
     public String getErrorType() { return errorType; }
-    public void setErrorType(String errorType) { this.errorType = errorType; }
 
     public String getErrorMessage() { return errorMessage; }
-    public void setErrorMessage(String errorMessage) { this.errorMessage = errorMessage; }
-
     public int getRetryCount() { return retryCount; }
-    public void setRetryCount(int retryCount) { this.retryCount = retryCount; }
 
     public int getMaxRetry() { return maxRetry; }
-    public void setMaxRetry(int maxRetry) { this.maxRetry = maxRetry; }
 
     public LocalDateTime getNextRetryAt() { return nextRetryAt; }
-    public void setNextRetryAt(LocalDateTime nextRetryAt) { this.nextRetryAt = nextRetryAt; }
-
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+    public String getJobName() { return jobName; }
+    public void setJobName(String jobName) { this.jobName = jobName; }
 
     public static class Builder {
         private Long id;
@@ -87,6 +81,7 @@ public class BatchRetryQueueEntity {
         private int maxRetry = 5;
         private LocalDateTime nextRetryAt;
         private String status = "PENDING";
+        private String jobName = "ORDERS_SYNC";
 
         public Builder id(Long id) {
             this.id = id;
@@ -128,8 +123,13 @@ public class BatchRetryQueueEntity {
             return this;
         }
 
-        public BatchRetryQueueEntity build() {
-            return new BatchRetryQueueEntity(this);
+        public Builder jobName(String jobName) {
+            this.jobName = jobName;
+            return this;
+        }
+
+        public BatchRetryQueue build() {
+            return new BatchRetryQueue(this);
         }
     }
 }

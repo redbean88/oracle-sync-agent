@@ -1,26 +1,23 @@
 package com.example.sync.infrastructure.batch;
 
-import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Component;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
-@Component
 public class AdaptiveChunkSizer {
 
     private static final Logger log = LoggerFactory.getLogger(AdaptiveChunkSizer.class);
 
-    @Value("${sync.chunk-size-initial:2000}") private int initial = 2000;
-    @Value("${sync.chunk-size-min:500}")      private int min = 500;
-    @Value("${sync.chunk-size-max:10000}")    private int max = 10000;
+    private final int min;
+    private final int max;
+    private final AtomicInteger current;
 
-    private final AtomicInteger current = new AtomicInteger();
-
-    @PostConstruct
-    public void init() { current.set(initial); }
+    public AdaptiveChunkSizer(int initial, int min, int max) {
+        this.min = min;
+        this.max = max;
+        this.current = new AtomicInteger(initial);
+    }
 
     public int getChunkSize() { return current.get(); }
 

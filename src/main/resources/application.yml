@@ -13,8 +13,9 @@ spring:
       password: 1234
       driver-class-name: oracle.jdbc.OracleDriver
       hikari:
-        maximum-pool-size: 10
+        maximum-pool-size: 12        # numJobs(3) × 3 + 2 = 11 → 12
         connection-timeout: 30000
+        leak-detection-threshold: 60000
         data-source-properties:
           oracle.jdbc.ReadTimeout: 600000
     target:
@@ -23,8 +24,9 @@ spring:
       password: 1234
       driver-class-name: oracle.jdbc.OracleDriver
       hikari:
-        maximum-pool-size: 10
+        maximum-pool-size: 12
         connection-timeout: 30000
+        leak-detection-threshold: 60000
         data-source-properties:
           oracle.jdbc.ReadTimeout: 600000
     proxy:
@@ -33,19 +35,26 @@ spring:
       password: 1234
       driver-class-name: oracle.jdbc.OracleDriver
       hikari:
-        maximum-pool-size: 10
+        maximum-pool-size: 12
         connection-timeout: 30000
         leak-detection-threshold: 60000
         data-source-properties:
           oracle.jdbc.ReadTimeout: 600000
 
 sync:
-  chunk-size-initial: 2000
-  chunk-size-min: 500
-  chunk-size-max: 10000
-  lag-alert-threshold: 100000
-  job-name: "ORDERS_SYNC"
-  fixed-delay-ms: 60000
+  jobs:
+    - name: ORDERS_SYNC
+      enabled: true
+      fixed-delay-ms: 60000
+      chunk-size-initial: 2000
+      chunk-size-min: 500
+      chunk-size-max: 10000
+      lag-alert-threshold: 100000
+      retry:
+        max-retry: 3
+        initial-backoff-sec: 60
+        backoff-step-sec: 300
+        claim-batch-size: 50
 
 management:
   endpoints:
