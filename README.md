@@ -1,57 +1,90 @@
-# Oracle-to-Oracle Data Sync Agent 🚀
+# Oracle-to-Oracle Data Sync Agent
 
-본 프로젝트는 Oracle 데이터베이스 간에 대용량 데이터를 고속으로 동기화하기 위한 엔터프라이즈급 에이전트입니다. Spring Boot와 Spring Data JPA, JdbcTemplate을 활용하여 안정성과 성능을 극대화했습니다.
+Oracle 데이터베이스 간 대용량 데이터를 안정적으로 동기화하는 Spring Boot 기반 에이전트입니다.
+JPA 없이 순수 JdbcTemplate만 사용하여 의존성을 최소화하고, 새로운 동기화 잡 추가 시 어댑터 클래스 하나만 작성하면 됩니다.
 
-## 🌟 핵심 기능 (Key Features)
+## 아키텍처
 
-- **3-DB 아키텍처**: Source(데이터 원천), Target(데이터 목적지), Proxy(메타데이터/체크포인트)의 물리적 분리를 통해 트래픽 간섭 최소화.
-- **JdbcTemplate 벌크 연산 (MERGE INTO)**: `JdbcTemplate`의 `batchUpdate`와 Oracle의 `MERGE INTO` 쿼리를 결합하여 대량의 Upsert 작업을 고속으로 처리.
-- **청크 기반 연속 처리 (Continuous Chunking)**: 스케줄 시작 시 백로그가 모두 처리될 때까지 설정된 청크 단위로 루프를 돌며 빠짐없이 데이터를 처리.
-- **적응형 청크 사이징 (Adaptive Chunk Sizer)**: 동기화 쓰기 처리 속도에 맞춰 청크 사이즈를 동적으로 조절하여 DB 부하 완화 및 최적의 처리량 유지.
-- **안정적인 오류 복구 (Retry Queue & DLQ)**: Oracle의 예외(ORA 에러)를 분석해 영구적(Permanent) 오류와 일시적(Transient) 오류를 구분. 실패한 데이터는 재시도 큐(Retry Queue)에 담아 지수 백오프(Exponential Backoff)로 재시도하며, 해결 불가 시 DeadLetter 처리.
-- **분산 락 (ShedLock)**: 다중 인스턴스 환경에서도 중복 실행 없이 안전하게 동기화 작업 보장.
-- **상태 및 지연 모니터링 (Lag Monitor)**: Source와 Target 간의 데이터 지연(Lag) 상태를 추적하고 Prometheus 지표로 제공.
-
-## 🛠 시스템 아키텍처
-
-```mermaid
-graph LR
-    subgraph "Source Database"
-        S[(Source Data)]
-    end
-    subgraph "Sync Agent"
-        R[Reader] --> E[JobExecutor]
-        E --> W[Writer]
-        E --> C[CheckpointService]
-        E -. 오류 발생 .-> RQ[Retry Queue]
-        RQ -. 영구 실패 .-> DLQ[Dead Letter]
-    end
-    subgraph "Proxy Database"
-        P[(Checkpoint & Lock\nRetry Queue)]
-    end
-    subgraph "Target Database"
-        T[(Target Data)]
-    end
-    
-    E -- "Loop & Chunk" --> W
-    W -- "High-Speed Batch (MERGE)" --> T
+```
+Source DB ──읽기──▶ SyncJobExecutor ──MERGE INTO──▶ Target DB
+                         │
+                  CheckpointService ──read/write──▶ Proxy DB
+                  RetryQueueRepository                (sync_checkpoint)
+                  ShedLock                            (batch_retry_queue)
+                                                      (shedlock)
 ```
 
-## ⚙️ 실행 환경 설정
+### 3-DB 분리
+| 역할 | 스키마 | 용도 |
+|------|-------|------|
+| Source | `source` | 동기화 원천 데이터 읽기 전용 |
+| Target | `target` | MERGE INTO로 Upsert |
+| Proxy | `proxy` | 체크포인트, 재시도 큐, ShedLock |
 
-### 1. 전제 조건
-- Java 8 이상
-- Oracle Database 12c 이상 (Source, Target, Proxy 각각의 스키마 혹은 독립 인스턴스)
-- Maven 3.6 이상
-- Docker (테스트 시 활용)
+## 핵심 동작 흐름
 
-### 2. 데이터베이스 설정 (DDL)
-각 DB에 동기화를 위한 비즈니스 및 메타데이터 테이블이 필요합니다.
-- **Proxy DB**: `SYNC_CHECKPOINT`, `BATCH_RETRY_QUEUE`, `SHEDLOCK`
-- **Source/Target DB**: 대상 비즈니스 테이블 (`ORDERS` / `ORDERS_TARGET`)
+1. **Scheduler (`OrdersSyncScheduler`)** — `@Scheduled` + `@SchedulerLock`으로 단일 인스턴스 실행 보장
+2. **Executor (`SyncJobExecutor`)** — `LockAssert.assertLocked()` 호출 후 청크 루프 진입
+3. **Adapter (`SyncJobAdapter<T>`)** — 테이블별 구현체. `readChunk` / `bulkUpsert` / `checkLag`
+4. **Checkpoint** — `bumpForward` UPDATE(`WHERE last_id < :lastId`)로 단조 증가 보장. split-brain에서 역진 방지.
+5. **Retry Queue** — `FOR UPDATE SKIP LOCKED`로 원자적 Claim. 재시도 횟수 초과 시 Dead Letter 처리.
 
-### 3. application.yml 구성
-`src/main/resources/application.yml` 파일에서 각 DB 접속 정보와 동기화 스케줄 설정을 구성합니다.
+## 새로운 동기화 잡 추가 방법
+
+1. `SyncJobAdapter<T>` 구현체 작성 (`XxxSyncAdapter.java`)
+2. `XxxSyncScheduler.java` 작성 (`@Scheduled` + `@SchedulerLock`)
+3. `application.yml`에 `sync.xxx.*` 설정 추가
+
+Source 조회, Target Upsert, Lag 체크 로직만 어댑터에 캡슐화되므로 설정·인프라 코드 변경 없음.
+
+## 패키지 구조
+
+```
+src/main/java/com/example/sync/
+├── service/
+│   ├── SyncJobExecutor.java          # 청크 루프, 예외 분류, 메트릭 기록
+│   ├── OrdersSyncScheduler.java      # @Scheduled + @SchedulerLock
+│   ├── SyncSweeperScheduler.java     # PROCESSING stuck 복구, SUCCESS 정리
+│   ├── adapter/
+│   │   ├── SyncJobAdapter.java       # 어댑터 인터페이스
+│   │   └── OrdersSyncAdapter.java    # ORDERS 테이블 구현체
+│   ├── checkpoint/
+│   │   └── CheckpointService.java    # last_id 조회/단조증가 업데이트
+│   ├── retry/
+│   │   ├── RetryQueueProcessor.java  # Claim → 재처리 → 성공/DLQ
+│   │   ├── RetryQueueRepository.java # claimPending (REQUIRES_NEW)
+│   │   ├── BatchRetryQueue.java      # 재시도 큐 DTO
+│   │   ├── RetryStatus.java          # PENDING / PROCESSING / SUCCESS / DEAD
+│   │   └── DeadLetterHandler.java
+│   └── monitoring/
+│       ├── SyncMetrics.java          # Prometheus 메트릭
+│       ├── LagMonitor.java           # Lag 계산 및 알림
+│       └── AlertService.java
+├── repository/
+│   ├── SyncCheckpointRepository.java # JdbcTemplate 기반 checkpoint CRUD
+│   └── BatchRetryQueueJdbcRepository.java
+├── infrastructure/
+│   ├── batch/AdaptiveChunkSizer.java # 쓰기 속도에 따른 청크 사이즈 자동 조절
+│   ├── exception/
+│   │   ├── OracleExceptionClassifier.java  # ORA 코드 → Transient/Permanent 분류
+│   │   ├── TransientSyncException.java
+│   │   └── PermanentSyncException.java
+│   ├── health/SyncDataSourcesHealthIndicator.java
+│   ├── config/
+│   │   ├── DataSourceConfig.java     # source/target/proxy DataSource + JdbcTemplate
+│   │   ├── ProxyJdbcConfig.java      # proxyTransactionManager (DataSourceTransactionManager)
+│   │   ├── TargetJdbcConfig.java     # targetTransactionManager
+│   │   ├── ShedLockConfig.java       # JdbcTemplateLockProvider
+│   │   ├── TaskConfig.java           # ThreadPoolTaskScheduler
+│   │   └── RetryConfig.java
+│   └── MeasuringLockProvider.java
+└── dto/
+    └── OrdersRecordDto.java
+```
+
+## 설정
+
+### application.yml 주요 항목
 
 ```yaml
 spring:
@@ -59,44 +92,108 @@ spring:
     source:
       jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
       username: source
-      password: (비밀번호)
+      password: 1234
     target:
-      jdbc-url: (대상 DB URL)
+      jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
+      username: target
+      password: 1234
     proxy:
-      jdbc-url: (체크포인트/락 DB URL)
+      jdbc-url: jdbc:oracle:thin:@localhost:1521/FREEPDB1
+      username: proxy
+      password: 1234
+
+sync:
+  orders:
+    enabled: true
+    fixed-delay-ms: 60000        # 스케줄 간격 (ms)
+    chunk-size-initial: 2000     # 초기 청크 사이즈
+    chunk-size-min: 500
+    chunk-size-max: 10000
+    lag-alert-threshold: 100000  # Source-Target 격차 알림 임계값
+    retry:
+      max-retry: 3
+      initial-backoff-sec: 60
+      backoff-step-sec: 300
+      claim-batch-size: 50
+
+server:
+  port: 8090
 ```
 
-## 🚀 실행 가이드
+### DB 스키마 (Proxy)
 
-### 빌드 및 컴파일
-```bash
-mvn clean compile
+```sql
+-- 동기화 체크포인트
+CREATE TABLE sync_checkpoint (
+    job_name      VARCHAR2(100) PRIMARY KEY,
+    last_id       NUMBER(19)    DEFAULT 0 NOT NULL,
+    last_synced_at TIMESTAMP,
+    processed_cnt NUMBER(19)    DEFAULT 0,
+    chunk_size    NUMBER(10)
+);
+
+-- 재시도 큐
+CREATE TABLE batch_retry_queue (
+    id            NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    source_ids    CLOB,
+    error_type    VARCHAR2(100),
+    error_message CLOB,
+    retry_count   NUMBER(5)    DEFAULT 0,
+    max_retry     NUMBER(5)    DEFAULT 3,
+    next_retry_at TIMESTAMP,
+    status        VARCHAR2(20) DEFAULT 'PENDING',
+    job_name      VARCHAR2(50) DEFAULT 'ORDERS_SYNC' NOT NULL
+);
+CREATE INDEX idx_retry_job_status_next ON batch_retry_queue (job_name, status, next_retry_at);
+
+-- ShedLock
+CREATE TABLE shedlock (
+    name       VARCHAR2(64)  PRIMARY KEY,
+    lock_until TIMESTAMP(3)  NOT NULL,
+    locked_at  TIMESTAMP(3)  NOT NULL,
+    locked_by  VARCHAR2(255) NOT NULL
+);
 ```
 
-### 어플리케이션 실행
-```bash
-mvn spring-boot:run
-```
-
-### Docker 기반 테스트 실행 (로컬 Oracle)
-통합 테스트는 외부 종속성(TestContainers 미사용) 대신 호스트(`host.docker.internal`)에 띄워진 로컬 Oracle(1521 포트)을 활용하여 수행할 수 있습니다.
+## 실행
 
 ```bash
-# 테스트용 Docker 이미지 빌드
+# 빌드
+mvn clean package -DskipTests
+
+# 실행
+java -jar target/oracle-sync-agent-0.0.1-SNAPSHOT.jar
+
+# Docker 테스트 (호스트 Oracle 사용)
 docker build -t oracle-sync-agent-test .
-
-# Docker 컨테이너를 통한 테스트 실행
 docker run --rm -e DB_HOST=host.docker.internal --add-host=host.docker.internal:host-gateway oracle-sync-agent-test
 ```
-*(자세한 사항은 `.claude/test-plan-docker.md` 참고)*
 
-## 📄 모니터링 및 메트릭
-어플리케이션은 기본적으로 Prometheus 형식의 메트릭을 수집 및 노출합니다.
-- **Endpoint**: `http://localhost:8080/actuator/prometheus`
-- **주요 지표**: 
-  - `sync.read.duration`, `sync.write.duration`: 읽기/쓰기 처리 속도
-  - `sync.lag.count`: 소스와 타겟의 격차
-  - `sync.retry.enqueue`, `sync.deadletter.enqueue`: 오류 재시도/실패 건수
+## 모니터링
 
----
-**주의**: 이 프로젝트는 Oracle 환경에 특화된 배치 및 예외 처리 로직을 포함하고 있어 Oracle 12c 이상(19c 이상 권장)에서 가장 뛰어난 성능을 발휘합니다.
+| 엔드포인트 | 설명 |
+|-----------|------|
+| `GET /actuator/health` | liveness / readiness 프로브 (K8s 대응) |
+| `GET /actuator/prometheus` | Prometheus 스크레이핑 |
+
+### 주요 메트릭
+
+| 메트릭 | 설명 |
+|--------|------|
+| `sync.tick.duration` | 전체 tick 소요 시간 |
+| `sync.read.duration` | Source 조회 소요 시간 |
+| `sync.write.duration` | Target Upsert 소요 시간 |
+| `sync.lag.count` | Source-Target 격차 (row 수) |
+| `sync.checkpoint.regression_skip` | split-brain 역진 방지 카운트 |
+| `sync.retry.enqueue` | 재시도 큐 적재 건수 |
+| `sync.deadletter.enqueue` | Dead Letter 처리 건수 |
+| `sync.shedlock.acquired` | ShedLock 획득 횟수 |
+
+## 기술 스택
+
+- Java 8, Spring Boot 2.7.18
+- **JdbcTemplate** (JPA 없음) — Oracle `MERGE INTO`, `FOR UPDATE SKIP LOCKED`, `SYSTIMESTAMP`
+- **ShedLock 4.44** — 분산 스케줄 락
+- **HikariCP** — 커넥션 풀 (source/target/proxy 각 독립)
+- **ojdbc8 19.22** — Oracle JDBC
+- **Micrometer + Prometheus** — 메트릭
