@@ -3,8 +3,6 @@ package com.example.sync.config;
 import com.example.sync.infrastructure.MeasuringLockProvider;
 import com.example.sync.service.monitoring.SyncMetrics;
 import net.javacrumbs.shedlock.core.LockProvider;
-import net.javacrumbs.shedlock.core.DefaultLockingTaskExecutor;
-import net.javacrumbs.shedlock.core.LockingTaskExecutor;
 import net.javacrumbs.shedlock.provider.jdbctemplate.JdbcTemplateLockProvider;
 import net.javacrumbs.shedlock.spring.annotation.EnableSchedulerLock;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -27,10 +25,5 @@ public class ShedLockConfig {
             .build()
         );
         return new MeasuringLockProvider(jdbc, metrics);
-    }
-
-    @Bean
-    public LockingTaskExecutor lockingTaskExecutor(LockProvider lockProvider) {
-        return new DefaultLockingTaskExecutor(lockProvider);
     }
 }

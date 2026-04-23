@@ -4,6 +4,7 @@ spring:
     hibernate:
       ddl-auto: none
     show-sql: false
+    open-in-view: false
   lifecycle:
     timeout-per-shutdown-phase: 6m
   datasource:
@@ -42,19 +43,18 @@ spring:
           oracle.jdbc.ReadTimeout: 600000
 
 sync:
-  jobs:
-    - name: ORDERS_SYNC
-      enabled: true
-      fixed-delay-ms: 60000
-      chunk-size-initial: 2000
-      chunk-size-min: 500
-      chunk-size-max: 10000
-      lag-alert-threshold: 100000
-      retry:
-        max-retry: 3
-        initial-backoff-sec: 60
-        backoff-step-sec: 300
-        claim-batch-size: 50
+  orders:
+    enabled: true
+    fixed-delay-ms: 60000
+    chunk-size-initial: 2000
+    chunk-size-min: 500
+    chunk-size-max: 10000
+    lag-alert-threshold: 100000
+    retry:
+      max-retry: 3
+      initial-backoff-sec: 60
+      backoff-step-sec: 300
+      claim-batch-size: 50
 
 management:
   endpoints:

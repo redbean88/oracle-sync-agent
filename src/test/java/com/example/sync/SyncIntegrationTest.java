@@ -1,10 +1,10 @@
 package com.example.sync;
 
-import com.example.sync.config.SyncJobProperties;
+import com.example.sync.config.RetryConfig;
 import com.example.sync.infrastructure.batch.AdaptiveChunkSizer;
 import com.example.sync.service.SyncJobExecutor;
 import com.example.sync.service.adapter.OrdersSyncAdapter;
-import com.example.sync.service.adapter.dto.OrdersRecordDto;
+import com.example.sync.domain.source.dto.OrdersRecordDto;
 import com.example.sync.service.monitoring.SyncMetrics;
 import com.example.sync.service.retry.DeadLetterHandler;
 import com.example.sync.service.retry.RetryQueueProcessor;
@@ -20,7 +20,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -45,7 +44,7 @@ class SyncIntegrationTest extends AbstractOracleIntegrationTest {
         LockAssert.TestHelper.makeAllAssertsPass(true);
 
         chunkSizer = new AdaptiveChunkSizer(100, 10, 500);
-        SyncJobProperties.RetryConfig retryConfig = new SyncJobProperties.RetryConfig();
+        RetryConfig retryConfig = new RetryConfig();
         retryProcessor = new RetryQueueProcessor<>(ordersAdapter, retryQueueRepository, deadLetterHandler, syncMetrics, retryConfig);
 
         // FK 의존 순서: orders_target → orders (orders_target이 orders를 참조할 수 있음)

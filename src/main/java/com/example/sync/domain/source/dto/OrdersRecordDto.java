@@ -1,44 +1,32 @@
-package com.example.sync.domain.source;
+package com.example.sync.domain.source.dto;
 
-import javax.persistence.Column;
-import javax.persistence.Entity;
-import javax.persistence.Id;
-import javax.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-@Entity
-public class Orders {
-
-    @Id
+public class OrdersRecordDto {
     private Long id;
-
-    @Column(name = "order_no", length = 50)
     private String orderNo;
-
-    @Column(name = "customer_id")
     private Long customerId;
-
-    @Column(name = "status", length = 20)
     private String status;
-
-    @Column(name = "amount", precision = 10, scale = 2)
     private BigDecimal amount;
-
-    @Column(name = "created_at")
     private LocalDateTime createdAt;
 
-    public Orders() {}
+    public OrdersRecordDto() {}
+
+    public OrdersRecordDto(Long id, String orderNo, Long customerId, String status,
+                           BigDecimal amount, LocalDateTime createdAt) {
+        this.id = id;
+        this.orderNo = orderNo;
+        this.customerId = customerId;
+        this.status = status;
+        this.amount = amount;
+        this.createdAt = createdAt;
+    }
 
     public Long getId() { return id; }
-
     public String getOrderNo() { return orderNo; }
-
     public Long getCustomerId() { return customerId; }
-
     public String getStatus() { return status; }
-
     public BigDecimal getAmount() { return amount; }
-
     public LocalDateTime getCreatedAt() { return createdAt; }
 }

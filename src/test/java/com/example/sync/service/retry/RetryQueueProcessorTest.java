@@ -1,6 +1,6 @@
 package com.example.sync.service.retry;
 
-import com.example.sync.config.SyncJobProperties;
+import com.example.sync.config.RetryConfig;
 import com.example.sync.service.adapter.SyncJobAdapter;
 import com.example.sync.service.monitoring.SyncMetrics;
 import org.junit.jupiter.api.BeforeEach;
@@ -28,7 +28,7 @@ class RetryQueueProcessorTest {
 
     @BeforeEach
     void setUp() {
-        SyncJobProperties.RetryConfig config = new SyncJobProperties.RetryConfig();
+        RetryConfig config = new RetryConfig();
         // 기본값: maxRetry=3, initialBackoffSec=60, backoffStepSec=300, claimBatchSize=50
         processor = new RetryQueueProcessor<>(adapter, repo, deadLetterHandler, metrics, config);
         when(adapter.getJobName()).thenReturn("ORDERS_SYNC");

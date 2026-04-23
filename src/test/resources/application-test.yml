@@ -4,6 +4,7 @@ spring:
     hibernate:
       ddl-auto: none
     show-sql: true
+    open-in-view: false
   datasource:
     source:
       jdbc-url: jdbc:oracle:thin:@${DB_HOST}:1521/FREEPDB1
@@ -33,16 +34,15 @@ spring:
     allow-bean-definition-overriding: true
 
 sync:
-  jobs:
-    - name: ORDERS_SYNC
-      enabled: true
-      fixed-delay-ms: 1000
-      chunk-size-initial: 100
-      chunk-size-min: 10
-      chunk-size-max: 500
-      lag-alert-threshold: 100000
-      retry:
-        max-retry: 3
-        initial-backoff-sec: 60
-        backoff-step-sec: 300
-        claim-batch-size: 50
+  orders:
+    enabled: true
+    fixed-delay-ms: 1000
+    chunk-size-initial: 100
+    chunk-size-min: 10
+    chunk-size-max: 500
+    lag-alert-threshold: 100000
+    retry:
+      max-retry: 3
+      initial-backoff-sec: 60
+      backoff-step-sec: 300
+      claim-batch-size: 50

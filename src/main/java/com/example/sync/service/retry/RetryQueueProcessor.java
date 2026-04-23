@@ -1,6 +1,6 @@
 package com.example.sync.service.retry;
 
-import com.example.sync.config.SyncJobProperties;
+import com.example.sync.config.RetryConfig;
 import com.example.sync.service.adapter.SyncJobAdapter;
 import com.example.sync.service.monitoring.SyncMetrics;
 import org.slf4j.Logger;
@@ -10,7 +10,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 
-/** Job별 인스턴스. Spring bean이 아닌 MultiJobSchedulerConfig에서 직접 생성. */
+/** Job별 인스턴스. Spring bean이 아닌 각 스케줄러 @PostConstruct에서 생성. */
 public class RetryQueueProcessor<T> {
 
     private static final Logger log = LoggerFactory.getLogger(RetryQueueProcessor.class);
@@ -19,13 +19,13 @@ public class RetryQueueProcessor<T> {
     private final RetryQueueRepository repo;
     private final DeadLetterHandler deadLetterHandler;
     private final SyncMetrics metrics;
-    private final SyncJobProperties.RetryConfig retryConfig;
+    private final RetryConfig retryConfig;
 
     public RetryQueueProcessor(SyncJobAdapter<T> adapter,
                                RetryQueueRepository repo,
                                DeadLetterHandler deadLetterHandler,
                                SyncMetrics metrics,
-                               SyncJobProperties.RetryConfig retryConfig) {
+                               RetryConfig retryConfig) {
         this.adapter = adapter;
         this.repo = repo;
         this.deadLetterHandler = deadLetterHandler;
