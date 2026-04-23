@@ -1,6 +1,6 @@
 package com.example.sync.service.retry;
 
-import com.example.sync.config.RetryConfig;
+import com.example.sync.infrastructure.config.RetryConfig;
 import com.example.sync.service.adapter.SyncJobAdapter;
 import com.example.sync.service.monitoring.SyncMetrics;
 import org.junit.jupiter.api.BeforeEach;

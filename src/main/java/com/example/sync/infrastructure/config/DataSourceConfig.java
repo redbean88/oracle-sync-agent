@@ -1,4 +1,4 @@
-package com.example.sync.config;
+package com.example.sync.infrastructure.config;
 
 import com.zaxxer.hikari.HikariDataSource;
 import org.springframework.boot.context.properties.ConfigurationProperties;

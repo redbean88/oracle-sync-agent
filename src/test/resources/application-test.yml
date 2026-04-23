@@ -1,10 +1,4 @@
 spring:
-  jpa:
-    database-platform: org.hibernate.dialect.Oracle12cDialect
-    hibernate:
-      ddl-auto: none
-    show-sql: true
-    open-in-view: false
   datasource:
     source:
       jdbc-url: jdbc:oracle:thin:@${DB_HOST}:1521/FREEPDB1

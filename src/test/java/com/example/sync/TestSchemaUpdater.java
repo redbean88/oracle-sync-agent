@@ -26,9 +26,20 @@ public class TestSchemaUpdater {
 
     @PostConstruct
     public void migrate() {
+        dropCheckpointVersionColumn();
         addJobNameColumn();
         addJobNameIndex();
         ensureOrdersAutoId();
+    }
+
+    private void dropCheckpointVersionColumn() {
+        try {
+            proxyJdbc.execute("ALTER TABLE sync_checkpoint DROP COLUMN version");
+            log.info("[TestSchema] sync_checkpoint.version 컬럼 DROP 완료");
+        } catch (Exception e) {
+            // ORA-00904: column does not exist — 이미 없으면 정상
+            log.debug("[TestSchema] sync_checkpoint.version 이미 없음: {}", e.getMessage());
+        }
     }
 
     private void addJobNameColumn() {

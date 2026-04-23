@@ -40,7 +40,7 @@ class CheckpointMonotonicIntegrationTest extends AbstractOracleIntegrationTest {
     void 동시_update_큰값이_최종저장된다() throws InterruptedException {
         // 사전 레코드 삽입 — 없으면 두 스레드 모두 INSERT 경쟁이 발생해 마지막 스레드가 이김
         proxyJdbc.update(
-            "INSERT INTO sync_checkpoint (job_name, last_id, version) VALUES (?, 0, 0)", "MONO_JOB");
+            "INSERT INTO sync_checkpoint (job_name, last_id) VALUES (?, 0)", "MONO_JOB");
 
         CountDownLatch start = new CountDownLatch(1);
         CountDownLatch done  = new CountDownLatch(2);

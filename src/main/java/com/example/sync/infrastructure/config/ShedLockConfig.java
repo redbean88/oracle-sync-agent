@@ -1,4 +1,4 @@
-package com.example.sync.config;
+package com.example.sync.infrastructure.config;
 
 import com.example.sync.infrastructure.MeasuringLockProvider;
 import com.example.sync.service.monitoring.SyncMetrics;

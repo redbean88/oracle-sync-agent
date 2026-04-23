@@ -1,10 +1,10 @@
 package com.example.sync;
 
-import com.example.sync.config.RetryConfig;
+import com.example.sync.infrastructure.config.RetryConfig;
 import com.example.sync.infrastructure.batch.AdaptiveChunkSizer;
 import com.example.sync.service.SyncJobExecutor;
 import com.example.sync.service.adapter.OrdersSyncAdapter;
-import com.example.sync.domain.source.dto.OrdersRecordDto;
+import com.example.sync.dto.OrdersRecordDto;
 import com.example.sync.service.monitoring.SyncMetrics;
 import com.example.sync.service.retry.DeadLetterHandler;
 import com.example.sync.service.retry.RetryQueueProcessor;
@@ -68,15 +68,6 @@ class SyncIntegrationTest extends AbstractOracleIntegrationTest {
 
         Integer targetCount = targetJdbc.queryForObject("SELECT COUNT(*) FROM orders_target", Integer.class);
         assertThat(targetCount).isEqualTo(3);
-    }
-
-    @Test
-    void execute_후_checkpoint_version_낙관락_작동() {
-        syncJobExecutor.execute(ordersAdapter, chunkSizer, retryProcessor, 100000L);
-
-        Long version = proxyJdbc.queryForObject(
-            "SELECT version FROM sync_checkpoint WHERE job_name = 'ORDERS_SYNC'", Long.class);
-        assertThat(version).isNotNull();
     }
 
     @Test

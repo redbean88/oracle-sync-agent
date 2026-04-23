@@ -1,10 +1,9 @@
-package com.example.sync.infrastructure;
+package com.example.sync.service;
 
-import com.example.sync.config.RetryConfig;
+import com.example.sync.infrastructure.config.RetryConfig;
 import com.example.sync.infrastructure.batch.AdaptiveChunkSizer;
-import com.example.sync.service.SyncJobExecutor;
 import com.example.sync.service.adapter.OrdersSyncAdapter;
-import com.example.sync.domain.source.dto.OrdersRecordDto;
+import com.example.sync.dto.OrdersRecordDto;
 import com.example.sync.service.monitoring.SyncMetrics;
 import com.example.sync.service.retry.DeadLetterHandler;
 import com.example.sync.service.retry.RetryQueueProcessor;

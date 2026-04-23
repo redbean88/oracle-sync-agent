@@ -1,4 +1,4 @@
-package com.example.sync.infrastructure;
+package com.example.sync.service;
 
 import com.example.sync.service.monitoring.SyncMetrics;
 import com.example.sync.service.retry.RetryQueueRepository;

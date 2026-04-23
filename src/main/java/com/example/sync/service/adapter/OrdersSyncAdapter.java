@@ -1,6 +1,6 @@
 package com.example.sync.service.adapter;
 
-import com.example.sync.domain.source.dto.OrdersRecordDto;
+import com.example.sync.dto.OrdersRecordDto;
 import com.example.sync.infrastructure.exception.OracleExceptionClassifier;
 import com.example.sync.service.monitoring.LagMonitor;
 import org.slf4j.Logger;

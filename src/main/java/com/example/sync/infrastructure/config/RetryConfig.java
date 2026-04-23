@@ -1,4 +1,4 @@
-package com.example.sync.config;
+package com.example.sync.infrastructure.config;
 
 public class RetryConfig {
 

@@ -1,15 +1,12 @@
 package com.example.sync.service.checkpoint;
 
-import com.example.sync.domain.proxy.SyncCheckpoint;
-import com.example.sync.repository.proxy.SyncCheckpointRepository;
+import com.example.sync.repository.SyncCheckpointRepository;
 import com.example.sync.service.monitoring.SyncMetrics;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.util.Optional;
 
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
@@ -33,7 +30,7 @@ class CheckpointServiceTest {
         service.update("JOB", 200L, 10, 2000);
 
         verify(metrics, never()).incrementCheckpointRegression();
-        verify(repository, never()).save(any());
+        verify(repository, never()).insert(any(), anyLong(), anyLong(), any());
     }
 
     @Test
@@ -44,23 +41,23 @@ class CheckpointServiceTest {
         service.update("JOB", 50L, 10, 2000);
 
         verify(metrics).incrementCheckpointRegression();
-        verify(repository, never()).save(any());
+        verify(repository, never()).insert(any(), anyLong(), anyLong(), any());
     }
 
     @Test
-    void update_신규레코드_save_호출() {
+    void update_신규레코드_insert_호출() {
         when(repository.bumpForward(eq("JOB"), eq(100L), eq(5L), eq(2000))).thenReturn(0);
         when(repository.existsById("JOB")).thenReturn(false);
 
         service.update("JOB", 100L, 5, 2000);
 
-        verify(repository).save(any(SyncCheckpoint.class));
+        verify(repository).insert(eq("JOB"), eq(100L), eq(5L), eq(2000));
         verify(metrics, never()).incrementCheckpointRegression();
     }
 
     @Test
     void getLastId_레코드_없으면_0반환() {
-        when(repository.findById("JOB")).thenReturn(Optional.empty());
+        when(repository.findLastId("JOB")).thenReturn(0L);
         assertThat(service.getLastId("JOB")).isEqualTo(0L);
     }
 

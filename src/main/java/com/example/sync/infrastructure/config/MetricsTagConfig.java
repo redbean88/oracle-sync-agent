@@ -1,4 +1,4 @@
-package com.example.sync.config;
+package com.example.sync.infrastructure.config;
 
 import io.micrometer.core.instrument.MeterRegistry;
 import org.springframework.boot.actuate.autoconfigure.metrics.MeterRegistryCustomizer;

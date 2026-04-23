@@ -1,4 +1,4 @@
-package com.example.sync.domain.source.dto;
+package com.example.sync.dto;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
